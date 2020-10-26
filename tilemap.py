@@ -462,11 +462,11 @@ class TileMap:
                             # deselect previous character and select the new one
                             if self.selected_character is not None:
                                 self.selected_character.set_selected(False)
+
                             self.selected_character = c
                             self.clear_tinted_tiles()
                             c.set_selected(True)
-
-                            return 0
+                            return
 
                     # move selected character to unoccupied position if able
                     if self.selected_character is not None and self.selected_character.accepting_input:

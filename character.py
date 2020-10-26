@@ -65,6 +65,8 @@ class Character(entity.Entity):
         self.skill_interface.set_active(False)
         self.selected_skill = None
 
+        self.skill_interface.add_button((0.05, 0.8, 0.1, 0.05), entity_data["name"], None)
+
         for skill_data in entity_data["skills"]:
             self.add_skill(Skill(skill_data, self))
 
@@ -144,7 +146,8 @@ class Character(entity.Entity):
 
     def add_skill(self, skill):
         self.skills.append(skill)
-        self.skill_interface.add_button((0.15 * len(self.skills), 0.9, 0.1, 0.05), "skill", len(self.skills) - 1)
+        self.skill_interface.add_button((0.15 * len(self.skills), 0.9, 0.1, 0.05),
+                                        skill.data["name"], len(self.skills) - 1)
 
     def get_selected_skill(self):
         if self.ally:
@@ -183,10 +186,10 @@ class Character(entity.Entity):
     def use_skill(self):
         # executes selected skill
         # if skill is successfully used, returns True
-        if self.has_action:
-            return False
-        self.use_action()
-        return self.selected_skill is not None
+        if self.has_action and self.selected_skill is not None:
+            self.use_action()
+            return True
+        return False
 
     def attack_with(self, skill):
         self.health -= skill.get_data("minimum damage")

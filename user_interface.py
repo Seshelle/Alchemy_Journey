@@ -35,6 +35,7 @@ class UserInterface:
         self.width = a_settings.display_width
         self.height = a_settings.display_height
         self.buttons = []
+        self.texts = []
         self.active = True
 
     def set_active(self, active):

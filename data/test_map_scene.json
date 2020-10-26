@@ -1,0 +1,62 @@
+{
+	"characters":[
+		{
+			"team":0,
+			"appearance":"images/tile041.png",
+			"avatar":"images/tile041.png",
+			"name":"Tester",
+			"height":1.5,
+			"health":10,
+			"movement":5,
+			"skills":[
+				{
+					"name":"Boom",
+					"range":10,
+					"area":2,
+					"minimum damage":1,
+					"maximum damage":2,
+					"accuracy":100,
+					"crit chance":0,
+					"mana cost":0,
+					"line of sight":true,
+					"appearance":"none"
+				},
+				{
+					"name":"Shot",
+					"range":10,
+					"area":0,
+					"minimum damage":1,
+					"maximum damage":2,
+					"accuracy":100,
+					"crit chance":0,
+					"mana cost":0,
+					"line of sight":true,
+					"appearance":"none"
+				}
+			]
+		},
+		{
+			"team":1,
+			"appearance":"images/tile041.png",
+			"avatar":"images/tile041.png",
+			"name":"Enemy",
+			"height":1.5,
+			"health":10,
+			"movement":5,
+			"skills":[
+				{
+					"name":"Stab",
+					"range":1.5,
+					"area":0,
+					"minimum damage":1,
+					"maximum damage":2,
+					"accuracy":100,
+					"crit chance":0,
+					"mana cost":0,
+					"line of sight":true,
+					"appearance":"none"
+				}
+			]
+		}
+	]
+}

@@ -11,6 +11,7 @@
 			"skills":[
 				{
 					"name":"Boom",
+					"desc":"Creates an explosion for a small amount of damage.",
 					"range":10,
 					"area":2,
 					"minimum damage":1,
@@ -23,6 +24,7 @@
 				},
 				{
 					"name":"Shot",
+					"desc":"Shoots one enemy within sight.",
 					"range":10,
 					"area":0,
 					"minimum damage":1,

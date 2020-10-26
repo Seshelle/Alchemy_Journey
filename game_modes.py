@@ -43,6 +43,7 @@ class MapScene(GameMode):
         super().__init__(screen)
         self.interface = user_interface.UserInterface()
         self.current_map = tilemap.TileMap("images/basic_ground_tiles.png", 8, 7, 128, 128, map_width, map_height)
+        self.current_map.add_entities('data/player_characters.json')
         self.current_map.add_entities('data/test_map_scene.json')
 
     def update(self, deltatime):

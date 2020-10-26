@@ -498,7 +498,7 @@ class TileMap:
                 if c["team"] == 0:
                     new_character = character.Character(self.get_spawn(), self, c)
                 else:
-                    new_character = character.AICharacter(self.get_spawn(), self, self.ai_manager, c)
+                    new_character = character.AICharacter((c["spawn x"], c["spawn y"]), self, self.ai_manager, c)
                     self.ai_manager.add_actor(new_character)
                 self.character_list.append(new_character)
                 self.entity_list.append(new_character)

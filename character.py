@@ -49,8 +49,8 @@ class Character(entity.Entity):
         self.selected = False
 
         # current state of character
-        self.has_move = False
-        self.has_action = False
+        self.has_move = True
+        self.has_action = True
         self.status_effects = []
 
         # attributes of this character
@@ -65,7 +65,7 @@ class Character(entity.Entity):
         self.skill_interface.set_active(False)
         self.selected_skill = None
 
-        self.skill_interface.add_button((0.05, 0.8, 0.1, 0.05), entity_data["name"], None)
+        self.skill_interface.add_button((0.05, 0.8, 0.1, 0.05), entity_data["name"], "name", False)
 
         for skill_data in entity_data["skills"]:
             self.add_skill(Skill(skill_data, self))
@@ -124,7 +124,7 @@ class Character(entity.Entity):
         self.skill_interface.render(screen)
 
     def notify(self, event):
-        if not self.has_action:
+        if self.has_action:
             skill_id = self.skill_interface.notify(event)
             if skill_id is not None:
                 self.selected_skill = self.skills[skill_id]
@@ -141,13 +141,16 @@ class Character(entity.Entity):
         self.selected = selected
         self.skill_interface.set_active(selected)
         self.selected_skill = None
-        if selected and not self.has_move:
-            self.current_map.display_movement(self)
+        if selected:
+            if self.has_move:
+                self.current_map.display_movement(self)
+            return self
+        return None
 
     def add_skill(self, skill):
         self.skills.append(skill)
         self.skill_interface.add_button((0.15 * len(self.skills), 0.9, 0.1, 0.05),
-                                        skill.data["name"], len(self.skills) - 1)
+                                        skill.data["name"], len(self.skills) - 1, True, skill.data["desc"])
 
     def get_selected_skill(self):
         if self.ally:
@@ -159,36 +162,43 @@ class Character(entity.Entity):
         return False
 
     def start_of_turn_update(self):
-        self.has_move = False
-        self.has_action = False
+        self.has_move = True
+        self.has_action = True
         self.accepting_input = self.ally
 
     def end_of_turn_update(self):
         self.accepting_input = False
 
     def commit_move(self, path):
-        if not self.has_move and len(path) > 1:
+        if self.has_move and len(path) > 1:
             self.path = path
             self.position = [path[-1][0], path[-1][1]]
             self.current_map.z_order_sort_entities()
             self.visual_position = path[0]
             self.accepting_input = False
-            self.has_move = True
+            self.has_move = False
             return True
         self.finish_move()
         return False
 
     def use_action(self):
-        self.has_action = True
-        self.has_move = True
+        self.has_action = False
+        self.has_move = False
         self.accepting_input = False
 
-    def use_skill(self):
-        # executes selected skill
+    def use_skill(self, target_pos):
         # if skill is successfully used, returns True
-        if self.has_action and self.selected_skill is not None:
-            self.use_action()
-            return True
+        if self.selected_skill is not None and self.has_action:
+            # check unblocked and in range
+            if not self.selected_skill.get_data("line of sight") or \
+                    self.current_map.line_of_sight(self.position, target_pos, self.selected_skill.get_data("range")):
+
+                self.current_map.attack_tiles(target_pos, self.selected_skill)
+                self.selected_skill = None
+                self.current_map.clear_tinted_tiles()
+                self.use_action()
+                return True
+
         return False
 
     def attack_with(self, skill):
@@ -258,9 +268,9 @@ class AICharacter(Character):
         self.manager.next_actor(self)
 
     def end_of_turn_update(self):
-        self.has_action = False
         self.AI_active = True
 
     def start_of_turn_update(self):
         self.AI_active = False
-        self.has_move = False
+        self.has_move = True
+        self.has_action = True

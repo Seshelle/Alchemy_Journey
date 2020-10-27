@@ -11,7 +11,7 @@
 			"skills":[
 				{
 					"name":"Boom",
-					"desc":"Creates an explosion for a small amount of damage.",
+					"desc":"Creates an explosion.\nRange: 10\nArea: 2\nDamage: 1-2",
 					"range":10,
 					"area":2,
 					"minimum damage":1,
@@ -24,11 +24,11 @@
 				},
 				{
 					"name":"Shot",
-					"desc":"Shoots one enemy within sight.",
+					"desc":"Shoots one enemy within sight.\nRange: 10\nDamage: 3-4",
 					"range":10,
 					"area":0,
-					"minimum damage":1,
-					"maximum damage":2,
+					"minimum damage":3,
+					"maximum damage":4,
 					"accuracy":100,
 					"crit chance":0,
 					"mana cost":0,

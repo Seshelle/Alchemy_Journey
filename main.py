@@ -21,13 +21,6 @@ debug_string = ""
 basicFont = pygame.font.SysFont(None, 36)
 tile_extent = tilemap.tile_extent
 
-
-def update_fps():
-    fps = str(int(clock.get_fps()))
-    fps_text = basicFont.render(fps, 1, pygame.Color("coral"))
-    return fps_text
-
-
 game_mode = game_modes.MainMenu(screen)
 while not crashed:
 

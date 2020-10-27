@@ -256,6 +256,9 @@ class TileMap:
         self.red_tinted_tiles = set()
         self.green_tinted_tiles = set()
 
+        # convenient groups
+        self.controlled_characters = []
+
         # map scene user interface
         self.interface = user_interface.UserInterface()
         self.interface.add_button((0.9, 0.95, 0.15, 0.05), "End Turn", "end turn")
@@ -337,8 +340,7 @@ class TileMap:
             screen.blit(self.selection_square, path_to_screen(self.selected_character.position))
             selected_skill = self.selected_character.get_selected_skill()
 
-            if self.selected_character.accepting_input and selected_skill is None \
-                    and self.selected_character.has_move is False:
+            if self.selected_character.accepting_input and selected_skill is None and self.selected_character.has_move:
                 # calculate a new path whenever destination changes
                 if mouse_change:
                     self.path = self.find_path(self.selected_character.position,
@@ -386,11 +388,7 @@ class TileMap:
             elif mouse_change and selected_skill is not None and selected_skill.get_data("area") > 0:
                 # render the area that will be hit by an area skill
                 self.clear_tinted_tiles()
-                if not selected_skill.get_data("line of sight") or \
-                        self.line_of_sight(self.selected_character.position,
-                                           self.mouse_coords, selected_skill.get_data("range")):
-
-                    self.red_tinted_tiles = self.make_radius(self.mouse_coords, selected_skill.get_data("area"), True)
+                self.display_skill(selected_skill)
 
         # draw highlighted square around mouse position
         screen.blit(self.selection_square, path_to_screen(self.mouse_coords))
@@ -451,52 +449,50 @@ class TileMap:
                     for c in self.character_list:
                         if mouse_coords == c.position:
 
-                            if not c.ally and self.selected_character is not None \
-                                    and self.selected_character.use_skill():
-                                self.attack_tiles(mouse_coords, selected_skill)
-                                self.selected_character.set_selected(False)
-                                self.selected_character = None
-                                self.clear_tinted_tiles()
+                            if not c.ally and self.selected_character is not None and \
+                                    self.selected_character.use_skill(mouse_coords):
                                 return
 
                             # deselect previous character and select the new one
                             if self.selected_character is not None:
                                 self.selected_character.set_selected(False)
 
-                            self.selected_character = c
                             self.clear_tinted_tiles()
-                            c.set_selected(True)
+                            self.selected_character = c.set_selected(True)
                             return
 
                     # move selected character to unoccupied position if able
                     if self.selected_character is not None and self.selected_character.accepting_input:
                         if self.selected_character.commit_move(self.path):
                             self.clear_tinted_tiles()
-                elif self.selected_character.use_skill():
+                else:
                     # center attack on clicked tile if free aiming
-                    self.attack_tiles(mouse_coords, selected_skill)
-                    self.selected_character.set_selected(False)
-                    self.selected_character = None
-                    self.clear_tinted_tiles()
+                    self.selected_character.use_skill(mouse_coords)
 
             elif event.button == 3:
                 if self.selected_character is not None:
                     if self.selected_character.get_selected_skill() is None:
                         # right click to deselect unit
-                        self.selected_character.set_selected(False)
-                        self.selected_character = None
+                        self.selected_character = self.selected_character.set_selected(False)
                         self.clear_tinted_tiles()
                     else:
                         # right click to cancel attack
                         self.selected_character.set_selected(True)
 
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_TAB:
+                if self.selected_character is None:
+                    self.selected_character = self.controlled_characters[0].set_selected(True)
+                pass
+
     def add_entities(self, filename):
         with open(filename) as f:
             entity_data = json.load(f)
             for c in entity_data["characters"]:
-                new_character = None
+                # team 0 is the player controlled team
                 if c["team"] == 0:
                     new_character = character.Character(self.get_spawn(), self, c)
+                    self.controlled_characters.append(new_character)
                 else:
                     new_character = character.AICharacter((c["spawn x"], c["spawn y"]), self, self.ai_manager, c)
                     self.ai_manager.add_actor(new_character)
@@ -537,9 +533,12 @@ class TileMap:
         if skill.get_data("area") == 0:
             self.clear_tinted_tiles()
             for e in self.character_list:
-                if not e.ally \
-                        and self.line_of_sight(self.selected_character.position, e.position, skill.get_data("range")):
+                if not e.ally and self.line_of_sight(skill.user.position, e.position, skill.get_data("range")):
                     self.red_tinted_tiles.add((e.position[0], e.position[1]))
+
+        elif not skill.get_data("line of sight") or self.line_of_sight(self.selected_character.position,
+                                                                       self.mouse_coords, skill.get_data("range")):
+            self.red_tinted_tiles = self.make_radius(self.mouse_coords, skill.get_data("area"), True)
 
     def display_movement(self, this_character):
         self.possible_paths = self.find_all_paths(this_character.position, this_character.movement)
@@ -551,10 +550,10 @@ class TileMap:
         self.mouse_coords = (-1, -1)
 
     def attack_tiles(self, center, skill):
-        for tile in self.make_radius(center, skill.get_data("area"), skill.get_data("line of sight")):
-            for c in self.character_list:
-                if not c.ally and c.position[0] == tile[0] and c.position[1] == tile[1]:
-                    c.attack_with(skill)
+        affected_tiles = self.make_radius(center, skill.get_data("area"), skill.get_data("line of sight"))
+        for c in self.character_list:
+            if c.team != skill.user.team and (c.position[0], c.position[1]) in affected_tiles:
+                c.attack_with(skill)
 
     def make_radius(self, center, radius, walkable_only):
         open_list = set()
@@ -759,8 +758,7 @@ class TileMap:
     def start_turn(self):
         self.clear_tinted_tiles()
         if self.selected_character is not None:
-            self.selected_character.set_selected(False)
-            self.selected_character = None
+            self.selected_character = self.selected_character.set_selected(False)
         for c in self.character_list:
             c.start_of_turn_update()
         self.interface.set_button_active("end turn", True)
@@ -768,8 +766,7 @@ class TileMap:
     def end_turn(self):
         self.clear_tinted_tiles()
         if self.selected_character is not None:
-            self.selected_character.set_selected(False)
-            self.selected_character = None
+            self.selected_character = self.selected_character.set_selected(False)
         for c in self.character_list:
             c.end_of_turn_update()
         self.ai_manager.start_ai_turn()

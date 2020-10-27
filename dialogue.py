@@ -20,17 +20,21 @@ def draw_text(surface, text, color, rect, font, aa=False, bkg=None):
         # determine maximum width of line
         while font.size(text[:i])[0] < rect[2] and i < len(text):
             i += 1
+            if i < len(text) and text[i] == "\n":
+                i += 1
+                break
 
         # if we've wrapped the text, then adjust the wrap to the last word
         if i < len(text):
-            i = text.rfind(" ", 0, i) + 1
+            i = max(text.rfind(" ", 0, i) + 1, text.rfind("\n", 0, i) + 1)
 
         # render the line and blit it to the surface
+        clean_text = text[:i].replace("\n", "")
         if bkg:
-            image = font.render(text[:i], 1, color, bkg)
+            image = font.render(clean_text, 1, color, bkg)
             image.set_colorkey(bkg)
         else:
-            image = font.render(text[:i], aa, color)
+            image = font.render(clean_text, aa, color)
 
         surface.blit(image, (rect[0], y))
         y += font_height + line_spacing

@@ -1,3 +1,4 @@
+import pygame
 import entity
 import tilemap
 import user_interface
@@ -59,14 +60,24 @@ class Character(entity.Entity):
         self.health = self.max_health
         self.movement = entity_data["movement"]
 
-        # skill attributes: range, area, min damage, max damage, accuracy, critical chance, mana cost
+        # create health bar image
+        self.health_height = math.floor(self.health / 10 + 1) * 12
+        self.health_bar = pygame.Surface((128, self.health_height))
+        self.health_bar.set_colorkey(pygame.Color("black"))
+        self.health_color = pygame.Color("green")
+        if self.team != 0:
+            self.health_color = pygame.Color("red")
+        for col in range(self.health):
+            row = math.floor(col / 10)
+            pygame.draw.rect(self.health_bar, self.health_color, (col * 12 - row * 120, row * 12, 10, 10))
+        self.health_bar.set_alpha(200)
+
+        # load skill data and display it on character interface
         self.skills = []
         self.skill_interface = user_interface.UserInterface()
         self.skill_interface.set_active(False)
         self.selected_skill = None
-
         self.skill_interface.add_button((0.05, 0.8, 0.1, 0.05), entity_data["name"], "name", False)
-
         for skill_data in entity_data["skills"]:
             self.add_skill(Skill(skill_data, self))
 
@@ -121,6 +132,8 @@ class Character(entity.Entity):
             screen.blit(self.appearance, (screen_pos[0], screen_pos[1] - self.height))
 
     def second_render(self, screen):
+        screen_pos = tilemap.path_to_screen(self.visual_position)
+        screen.blit(self.health_bar, (screen_pos[0], screen_pos[1] - self.height - self.health_height))
         self.skill_interface.render(screen)
 
     def notify(self, event):
@@ -202,8 +215,15 @@ class Character(entity.Entity):
         return False
 
     def attack_with(self, skill):
-        self.health -= skill.get_data("minimum damage")
+        self.damage(skill.get_data("minimum damage"))
         print(self.health)
+
+    def damage(self, amount):
+        self.health -= amount
+        # gray out removed health
+        for col in range(self.max_health - 1, self.health - 1, -1):
+            row = math.floor(col / 10)
+            pygame.draw.rect(self.health_bar, pygame.Color("gray"), (col * 12 - row * 120, row * 12, 10, 10))
 
     def is_moving(self):
         return len(self.path) > 0

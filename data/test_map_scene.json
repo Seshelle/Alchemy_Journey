@@ -3,7 +3,7 @@
 		{
 			"team":1,
 			"spawn x":10,
-			"spawn y":0,
+			"spawn y":-1,
 			"appearance":"images/tile041.png",
 			"avatar":"images/tile041.png",
 			"name":"Enemy",
@@ -13,6 +13,9 @@
 			"skills":[
 				{
 					"name":"Stab",
+					"display":"default",
+					"targeting":"default",
+					"effect":"default",
 					"desc":"Stabs a dude.",
 					"range":1.5,
 					"area":0,

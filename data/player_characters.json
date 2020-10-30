@@ -11,6 +11,9 @@
 			"skills":[
 				{
 					"name":"Boom",
+					"display":"default",
+					"targeting":"default",
+					"effect":"default",
 					"desc":"Creates an explosion.\nRange: 10\nArea: 2\nDamage: 1-2",
 					"range":10,
 					"area":2,
@@ -24,6 +27,9 @@
 				},
 				{
 					"name":"Shot",
+					"display":"default",
+					"targeting":"default",
+					"effect":"default",
 					"desc":"Shoots one enemy within sight.\nRange: 10\nDamage: 3-4",
 					"range":10,
 					"area":0,

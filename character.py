@@ -3,34 +3,9 @@ import entity
 import tilemap
 import user_interface
 import math
+import skill_handler
 from random import randint
 from dialogue import draw_shadowed_text
-
-
-class Skill:
-    def __init__(self, skill_data, user):
-        self.data = skill_data
-        self.user = user
-
-    def get_data(self, key):
-        if key in self.data.keys():
-            return self.data[key]
-        else:
-            return None
-
-
-class StatusEffect:
-    def __init__(self):
-        pass
-
-    def apply_effect(self, attack_hit):
-        pass
-
-    def start_turn_effect(self):
-        pass
-
-    def end_turn_effect(self):
-        pass
 
 
 class Character(entity.Entity):
@@ -87,7 +62,7 @@ class Character(entity.Entity):
         self.selected_skill = None
         self.skill_interface.add_button((0.05, 0.8, 0.1, 0.05), entity_data["name"], "name", False)
         for skill_data in entity_data["skills"]:
-            self.add_skill(Skill(skill_data, self))
+            self.add_skill(skill_handler.Skill(skill_data, self))
 
     def get_z(self):
         return self.visual_position[0] + self.visual_position[1] + 0.001
@@ -206,6 +181,8 @@ class Character(entity.Entity):
         return False
 
     def use_action(self):
+        self.selected_skill = None
+        self.current_map.clear_tinted_tiles()
         self.has_action = False
         self.has_move = False
         self.accepting_input = False
@@ -220,26 +197,14 @@ class Character(entity.Entity):
     def clear_hit(self):
         self.chance_image_active = False
 
-    def use_skill(self, target_pos):
+    def use_skill(self, tile_pos):
         # if skill is successfully used, returns True
-        if self.selected_skill is not None and self.has_action:
-            # check unblocked and in range
-            if not self.selected_skill.get_data("line of sight") or \
-                    self.current_map.line_of_sight(self.position, target_pos, self.selected_skill.get_data("range")):
-
-                self.current_map.attack_tiles(target_pos, self.selected_skill)
-                self.selected_skill = None
-                self.current_map.clear_tinted_tiles()
-                self.use_action()
-                return True
-
+        if self.selected_skill is not None:
+            return self.selected_skill.exec_skill(tile_pos)
         return False
 
     def attack_with(self, skill):
-        hit_chance = skill.get_data("accuracy")
-        if randint(0, 99) < hit_chance:
-            damage = randint(skill.get_data("min damage"), skill.get_data("max damage"))
-            self.damage(damage)
+        skill.use_on_entity(self)
 
     def damage(self, amount):
         self.health -= amount
@@ -306,7 +271,8 @@ class AICharacter(Character):
                 attack_targets.append(c)
 
         if len(attack_targets) > 0:
-            attack_targets[0].attack_with(self.skills[0])
+            # self.skills[0].use_on_entity(attack_targets[0])
+            self.skills[0].exec_skill(attack_targets[0].position)
 
         self.manager.next_actor(self)
 

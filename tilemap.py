@@ -387,7 +387,6 @@ class TileMap:
                         last_loc = loc
             elif mouse_change and selected_skill is not None and selected_skill.get_data("area") > 0:
                 # render the area that will be hit by an area skill
-                self.clear_tinted_tiles()
                 self.display_skill(selected_skill)
 
         # draw highlighted square around mouse position
@@ -546,8 +545,10 @@ class TileMap:
         self.tint_layer_update = True
 
     def display_skill(self, skill):
+        self.clear_tinted_tiles()
+        self.red_tinted_tiles = skill.display(self.mouse_coords)
+
         if skill.get_data("area") == 0:
-            self.clear_tinted_tiles()
             for e in self.character_list:
                 if not e.ally and self.line_of_sight(skill.user.position, e.position, skill.get_data("range")):
                     self.red_tinted_tiles.add((e.position[0], e.position[1]))
@@ -569,11 +570,12 @@ class TileMap:
         # dirty the mouse coordinates so there will be an immediate path update
         self.mouse_coords = (-1, -1)
 
-    def attack_tiles(self, center, skill):
-        affected_tiles = self.make_radius(center, skill.get_data("area"), skill.get_data("line of sight"))
+    def get_characters_in_set(self, tile_set):
+        inside = []
         for c in self.character_list:
-            if c.team != skill.user.team and (c.position[0], c.position[1]) in affected_tiles:
-                c.attack_with(skill)
+            if (c.position[0], c.position[1]) in tile_set:
+                inside.append(c)
+        return inside
 
     def make_radius(self, center, radius, walkable_only):
         open_list = set()

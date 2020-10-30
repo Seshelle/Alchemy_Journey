@@ -45,6 +45,12 @@ def draw_text(surface, text, color, rect, font, aa=False, bkg=None):
     return text
 
 
+def draw_shadowed_text(surface, text, color, rect, font, aa=False, bkg=None):
+    rect2 = (rect[0] + 2, rect[1] + 2, rect[2], rect[3])
+    draw_text(surface, text, (0, 0, 1), rect2, font, aa, bkg)
+    draw_text(surface, text, color, rect, font, aa, bkg)
+
+
 class Dialogue:
 
     def __init__(self, dialogue_file):

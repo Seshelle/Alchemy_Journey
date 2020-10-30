@@ -1,7 +1,7 @@
 import pygame
 import math
 import alchemy_settings as a_settings
-from dialogue import draw_text
+from dialogue import draw_shadowed_text
 
 
 class UIButton:
@@ -23,14 +23,13 @@ class UIButton:
         self.has_hover_text = False
         if hover_text is not None:
             self.has_hover_text = True
+            # TODO: replace these magic numbers
             self.hover_size = (256, 128)
             self.hover_font = pygame.font.SysFont(None, 26)
             self.hover_text_image = pygame.Surface(self.hover_size).convert()
             self.hover_text_image.fill(pygame.Color("orange"))
-            draw_text(self.hover_text_image, hover_text, pygame.Color("black"),
-                      (2, 2, self.hover_size[0], self.hover_size[1]), self.hover_font, True)
-            draw_text(self.hover_text_image, hover_text, pygame.Color("white"),
-                      (0, 0, self.hover_size[0], self.hover_size[1]), self.hover_font, True)
+            draw_shadowed_text(self.hover_text_image, hover_text, pygame.Color("white"),
+                               (0, 0, self.hover_size[0], self.hover_size[1]), self.hover_font, True)
 
     def set_active(self, active):
         self.active = active

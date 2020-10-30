@@ -3,6 +3,8 @@ import entity
 import tilemap
 import user_interface
 import math
+from random import randint
+from dialogue import draw_shadowed_text
 
 
 class Skill:
@@ -72,6 +74,12 @@ class Character(entity.Entity):
             pygame.draw.rect(self.health_bar, self.health_color, (col * 12 - row * 120, row * 12, 10, 10))
         self.health_bar.set_alpha(200)
 
+        # create hit chance indicator
+        self.chance_image = pygame.Surface((tilemap.tile_extent[0], tilemap.tile_extent[1]))
+        self.chance_image.set_colorkey(pygame.Color("black"))
+        self.font = pygame.font.SysFont(None, 30)
+        self.chance_image_active = False
+
         # load skill data and display it on character interface
         self.skills = []
         self.skill_interface = user_interface.UserInterface()
@@ -134,6 +142,8 @@ class Character(entity.Entity):
     def second_render(self, screen):
         screen_pos = tilemap.path_to_screen(self.visual_position)
         screen.blit(self.health_bar, (screen_pos[0], screen_pos[1] - self.height - self.health_height))
+        if self.chance_image_active:
+            screen.blit(self.chance_image, (screen_pos[0] + tilemap.tile_extent[0], screen_pos[1] - self.height))
         self.skill_interface.render(screen)
 
     def notify(self, event):
@@ -163,7 +173,7 @@ class Character(entity.Entity):
     def add_skill(self, skill):
         self.skills.append(skill)
         self.skill_interface.add_button((0.15 * len(self.skills), 0.9, 0.1, 0.05),
-                                        skill.data["name"], len(self.skills) - 1, True, skill.data["desc"])
+                                        skill.get_data("name"), len(self.skills) - 1, True, skill.get_data("desc"))
 
     def get_selected_skill(self):
         if self.ally:
@@ -181,6 +191,7 @@ class Character(entity.Entity):
 
     def end_of_turn_update(self):
         self.accepting_input = False
+        self.chance_image_active = False
 
     def commit_move(self, path):
         if self.has_move and len(path) > 1:
@@ -199,6 +210,16 @@ class Character(entity.Entity):
         self.has_move = False
         self.accepting_input = False
 
+    def display_hit(self, skill):
+        hit_chance = skill.get_data("accuracy")
+        self.chance_image.fill((0, 0, 0))
+        self.chance_image_active = True
+        draw_shadowed_text(self.chance_image, str(hit_chance) + "%", pygame.Color("white"),
+                           (0, 0, tilemap.tile_extent[0], tilemap.tile_extent[1]), self.font)
+
+    def clear_hit(self):
+        self.chance_image_active = False
+
     def use_skill(self, target_pos):
         # if skill is successfully used, returns True
         if self.selected_skill is not None and self.has_action:
@@ -215,8 +236,10 @@ class Character(entity.Entity):
         return False
 
     def attack_with(self, skill):
-        self.damage(skill.get_data("minimum damage"))
-        print(self.health)
+        hit_chance = skill.get_data("accuracy")
+        if randint(0, 99) < hit_chance:
+            damage = randint(skill.get_data("min damage"), skill.get_data("max damage"))
+            self.damage(damage)
 
     def damage(self, amount):
         self.health -= amount

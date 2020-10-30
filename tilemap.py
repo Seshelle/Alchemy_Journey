@@ -471,10 +471,10 @@ class TileMap:
 
             elif event.button == 3:
                 if self.selected_character is not None:
+                    self.clear_tinted_tiles()
                     if self.selected_character.get_selected_skill() is None:
                         # right click to deselect unit
                         self.selected_character = self.selected_character.set_selected(False)
-                        self.clear_tinted_tiles()
                     else:
                         # right click to cancel attack
                         self.selected_character.set_selected(True)
@@ -496,9 +496,25 @@ class TileMap:
                 else:
                     new_character = character.AICharacter((c["spawn x"], c["spawn y"]), self, self.ai_manager, c)
                     self.ai_manager.add_actor(new_character)
-                self.character_list.append(new_character)
+
+                # add entity to character list if it makes decisions
+                if new_character.intelligent:
+                    self.character_list.append(new_character)
                 self.entity_list.append(new_character)
         self.z_order_sort_entities()
+
+    def remove_entity(self, entity):
+        if entity == self.selected_character:
+            self.selected_character = None
+
+        if entity in self.character_list:
+            self.character_list.remove(entity)
+
+        if entity in self.entity_list:
+            self.entity_list.remove(entity)
+
+        if entity in self.ai_manager.actors:
+            self.ai_manager.actors.remove(entity)
 
     def get_spawn(self):
         spawn_pos = self.spawn_points[self.spawns_used]
@@ -535,10 +551,14 @@ class TileMap:
             for e in self.character_list:
                 if not e.ally and self.line_of_sight(skill.user.position, e.position, skill.get_data("range")):
                     self.red_tinted_tiles.add((e.position[0], e.position[1]))
+                    e.display_hit(skill)
 
         elif not skill.get_data("line of sight") or self.line_of_sight(self.selected_character.position,
                                                                        self.mouse_coords, skill.get_data("range")):
             self.red_tinted_tiles = self.make_radius(self.mouse_coords, skill.get_data("area"), True)
+            for c in self.character_list:
+                if not c.ally and tuple(c.position) in self.red_tinted_tiles:
+                    c.display_hit(skill)
 
     def display_movement(self, this_character):
         self.possible_paths = self.find_all_paths(this_character.position, this_character.movement)

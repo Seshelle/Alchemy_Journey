@@ -36,3 +36,9 @@ class Entity:
     def render(self, screen, masks=None):
         screen_pos = tilemap.path_to_screen(self.position)
         screen.blit(self.appearance, (screen_pos[0], screen_pos[1] - self.height))
+
+    def start_of_turn_update(self):
+        pass
+
+    def end_of_turn_update(self):
+        pass

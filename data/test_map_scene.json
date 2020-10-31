@@ -1,4 +1,13 @@
 {
+	"tile sheet":"images/basic_ground_tiles.png",
+	"sheet col":8,
+	"sheet row":7,
+	"tile width":128,
+	"tile height":128,
+	"map width":25,
+	"map height":50,
+	"border width": 4,
+	"border height": 10,
 	"characters":[
 		{
 			"team":1,

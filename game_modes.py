@@ -31,7 +31,7 @@ class MainMenu(GameMode):
         button_pressed = self.interface.notify(event)
         if button_pressed is not None:
             if button_pressed == "map":
-                self.new_mode = MapScene(self.screen, 21, 36)
+                self.new_mode = MapScene(self.screen, "data/test_map_scene.json")
             if button_pressed == "story":
                 self.new_mode = DialogueScene('data/dialogue_test.json', self.screen)
             if button_pressed == "quit":
@@ -39,10 +39,10 @@ class MainMenu(GameMode):
 
 
 class MapScene(GameMode):
-    def __init__(self, screen, map_width, map_height):
+    def __init__(self, screen, filename):
         super().__init__(screen)
         self.interface = user_interface.UserInterface()
-        self.current_map = tilemap.TileMap("images/basic_ground_tiles.png", 8, 7, 128, 128, map_width, map_height)
+        self.current_map = tilemap.TileMap(filename)
         self.current_map.add_entities('data/player_characters.json')
         self.current_map.add_entities('data/test_map_scene.json')
 

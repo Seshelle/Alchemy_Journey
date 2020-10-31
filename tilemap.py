@@ -10,6 +10,8 @@ import json
 tile_extent = (64, 32)
 camera_speed = 0.5
 camera_pos = [0, 0]
+border_x = 4
+border_y = 10
 
 
 def path_to_map(coords):
@@ -169,30 +171,37 @@ class Mask:
 class TileMap:
     mouse_coords = None
 
-    def __init__(self, file_name, sheet_rows, sheet_columns, sheet_width, sheet_height, map_width, map_height):
-        self.map_width = map_width
-        self.map_height = map_height
-        self.background = pygame.Surface([(map_width + 1) * tile_extent[0] * 2,
-                                          (map_height + 1) * tile_extent[1] * 2]).convert()
-        self.tint_layer = pygame.Surface([(map_width + 1) * tile_extent[0] * 2,
-                                          (map_height + 1) * tile_extent[1] * 2]).convert()
+    def __init__(self, filename):
+        f = open(filename)
+        map_data = json.load(f)
+        self.map_width = map_data["map width"]
+        self.map_height = map_data["map height"]
+        self.background_offset = (-border_x * tile_extent[0] * 2, -border_y * tile_extent[1])
+        self.background = pygame.Surface([(self.map_width + 1 + border_x * 2) * tile_extent[0] * 2,
+                                          (self.map_height + 1 + border_y) * tile_extent[1] * 2]).convert()
+        self.tint_layer = pygame.Surface([(self.map_width + 1) * tile_extent[0] * 2,
+                                          (self.map_height + 1) * tile_extent[1] * 2]).convert()
         self.tint_layer.fill((0, 0, 0))
         self.tint_layer.set_colorkey((0, 0, 0))
         self.tint_layer.set_alpha(75)
         self.tint_layer_rect = (0, 0, 0, 0)
         self.tint_layer_update = False
         self.interface_layer = pygame.Surface([a_settings.display_width, a_settings.display_height]).convert()
-        sheet = pygame.image.load(file_name).convert()
+        sheet = pygame.image.load(map_data["tile sheet"]).convert()
         self.ground_tiles = dict()
         self.tile_masks = dict()
 
         # create separate images from sprite sheet
+        sheet_rows = map_data["sheet row"]
+        sheet_columns = map_data["sheet col"]
+        tile_width = map_data["tile width"]
+        tile_height = map_data["tile height"]
         count = 0
-        for i in range(sheet_rows):
-            for j in range(sheet_columns):
-                image = pygame.Surface([sheet_width, sheet_height]).convert()
+        for i in range(sheet_columns):
+            for j in range(sheet_rows):
+                image = pygame.Surface([tile_width, tile_height]).convert()
                 image.set_colorkey(pygame.Color("black"))
-                image.blit(sheet, (0, 0), (i * sheet_width, j * sheet_height, sheet_width, sheet_height))
+                image.blit(sheet, (0, 0), (i * tile_width, j * tile_height, tile_width, tile_height))
                 self.ground_tiles[count] = image
 
                 # create transparency masks from tiles
@@ -208,24 +217,23 @@ class TileMap:
         self.spawns_used = 0
         self.tile_list = dict()
         random.seed(3)
-        for row in range(map_height):
-            for col in range(map_width):
+        for row in range(self.map_height):
+            for col in range(self.map_width):
                 if random.random() < 0.8:
                     self.tile_list[(col, row)] = Tile(0)
                 else:
                     self.tile_list[(col, row)] = Tile(14, round(tile_extent[1] * 3 / 2), False)
 
         # create a grayed out border image
-        border_image = self.ground_tiles[0].copy()
+        border_image = self.ground_tiles[14].copy()
         border_image.fill((120, 120, 120), special_flags=pygame.BLEND_MULT)
-        self.border_thickness = 1
 
         # blit each tile to the map, put grayed out borders outside map edge
-        for row in range(-self.border_thickness, map_height + self.border_thickness):
-            for col in range(-self.border_thickness, map_width + self.border_thickness):
-                x = (col * tile_extent[0] + tile_extent[1] * (row % 2)) * 2
-                y = row * tile_extent[1]
-                if x < 0 or y < 0 or row >= map_height or col >= map_width:
+        for row in range(-border_y, self.map_height + border_y):
+            for col in range(-border_x, self.map_width + border_x):
+                x = ((col + border_x) * tile_extent[0] + tile_extent[1] * (row % 2)) * 2
+                y = (row + border_y) * tile_extent[1]
+                if col < 0 or row < 0 or row >= self.map_height or col >= self.map_width:
                     self.background.blit(border_image, (x, y))
                 else:
                     attributes = self.tile_list[(col, row)]
@@ -320,8 +328,10 @@ class TileMap:
                                     max_y - min_y + tile_extent[1] * 2)
 
         # draw background first
-        screen_rect = (-camera_pos[0], -camera_pos[1], a_settings.display_width, a_settings.display_height)
-        screen.blit(self.background, (0, 0), screen_rect)
+        screen_rect = (-camera_pos[0], -camera_pos[1],
+                       a_settings.display_width - self.background_offset[0],
+                       a_settings.display_height - self.background_offset[1])
+        screen.blit(self.background, self.background_offset, screen_rect)
 
         # render tint layer over background
         if len(self.red_tinted_tiles) + len(self.green_tinted_tiles) > 0:
@@ -548,17 +558,17 @@ class TileMap:
         self.move_camera_in_bounds()
 
     def move_camera_in_bounds(self):
-        if camera_pos[1] > 0:
-            camera_pos[1] = 0
+        if camera_pos[1] > -self.background_offset[1] - tile_extent[1]:
+            camera_pos[1] = -self.background_offset[1] - tile_extent[1]
 
-        if camera_pos[1] < -(self.map_height + 1) * tile_extent[1] + a_settings.display_height:
-            camera_pos[1] = -(self.map_height + 1) * tile_extent[1] + a_settings.display_height
+        if camera_pos[1] < -self.map_height * tile_extent[1] + a_settings.display_height + self.background_offset[1]:
+            camera_pos[1] = -self.map_height * tile_extent[1] + a_settings.display_height + self.background_offset[1]
 
-        if camera_pos[0] > 0:
-            camera_pos[0] = 0
+        if camera_pos[0] > -self.background_offset[0] - tile_extent[0]:
+            camera_pos[0] = -self.background_offset[0] - tile_extent[0]
 
-        if camera_pos[0] < -(self.map_width + 0.5) * tile_extent[0] * 2 + a_settings.display_width:
-            camera_pos[0] = -(self.map_width + 0.5) * tile_extent[0] * 2 + a_settings.display_width
+        if camera_pos[0] < -self.map_width * tile_extent[0] * 2 + a_settings.display_width + self.background_offset[0]:
+            camera_pos[0] = -self.map_width * tile_extent[0] * 2 + a_settings.display_width + self.background_offset[0]
 
     def get_spawn(self):
         spawn_pos = self.spawn_points[self.spawns_used]

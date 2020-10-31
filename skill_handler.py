@@ -1,4 +1,5 @@
 from random import randint
+import entity
 
 
 class Skill:
@@ -18,6 +19,9 @@ class Skill:
 
     def exec_skill(self, tile_pos):
         return exec_skill_func("skill_" + self.data["effect"], self, tile_pos)
+
+    def exec_secondary_skill(self, tile_pos, name):
+        return exec_skill_func("skill_" + self.data[name], self, tile_pos)
 
 
 class StatusEffect:
@@ -50,22 +54,27 @@ def exec_skill_func(key, skill_used, target):
 
 
 """ ---------- DISPLAY FUNCTIONS ---------- """
+# display functions return a set of tiles to display when choosing the target of a skill
 
 
 @skill_func
 def display_default(skill_used, tile_pos):
-    attacked_tiles = skill_used.user.current_map.make_radius(tile_pos, skill_used.get_data("area"), True)
+    current_map = skill_used.user.current_map
     if skill_used.get_data("area") > 0:
+        attacked_tiles = current_map.make_radius(tile_pos, skill_used.get_data("area"), True)
         return attacked_tiles
     else:
         potential_targets = set()
-        for c in skill_used.user.current_map.character_list:
-            if (c.position[0], c.position[1]) in attacked_tiles:
-                potential_targets.add((c.position[0], c.position[1]))
+        for e in current_map.character_list:
+            if not e.ally and current_map.line_of_sight(skill_used.user.position, e.position,
+                                                        skill_used.get_data("range")):
+                potential_targets.add((e.position[0], e.position[1]))
+                e.display_hit(skill_used)
         return potential_targets
 
 
 """ ---------- TARGETING FUNCTIONS ---------- """
+# targeting functions return a list of characters hit by the skill
 
 
 @skill_func
@@ -77,6 +86,7 @@ def target_default(skill_used, tile_pos):
 
 
 """ ---------- SKILL FUNCTIONS ---------- """
+# skill functions handle the execution of a skill
 
 
 @skill_func
@@ -89,11 +99,38 @@ def skill_default(skill_used, tile_pos):
         for target in targets:
             if target.team != user.team:
                 # roll to hit
-                hit_chance = skill_used.get_data("accuracy")
-                if randint(0, 99) < hit_chance:
+                if randint(0, 99) < skill_used.get_data("accuracy"):
                     damage = randint(skill_used.get_data("min damage"), skill_used.get_data("max damage"))
+                    if randint(0, 99) < skill_used.get_data("crit chance"):
+                        damage *= 2
                     target.damage(damage)
         # end the character's turn
         user.use_action()
         return True
     return False
+
+
+@skill_func
+def skill_place_delayed_explosion(skill_used, tile_pos):
+    # place a delayed explosion entity at tile position
+    current_map = skill_used.user.current_map
+    if current_map.in_bounds(tile_pos, True):
+        entity_data = {"appearance": "images/tile040.png", "height": 0}
+        current_map.add_entity(entity.DelayedSkill(tile_pos, entity_data, skill_used))
+        skill_used.user.use_action()
+        return True
+    return False
+
+
+@skill_func
+def skill_delayed_explosion(skill_used, tile_pos):
+    # get targets that can be attacked
+    targets = exec_skill_func("target_" + skill_used.get_data("targeting"), skill_used, tile_pos)
+    for target in targets:
+        # roll to hit
+        if randint(0, 99) < skill_used.get_data("accuracy"):
+            damage = randint(skill_used.get_data("min damage"), skill_used.get_data("max damage"))
+            if randint(0, 99) < skill_used.get_data("crit chance"):
+                damage *= 2
+            target.damage(damage)
+    return True

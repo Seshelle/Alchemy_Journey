@@ -502,18 +502,25 @@ class TileMap:
                 self.entity_list.append(new_character)
         self.z_order_sort_entities()
 
-    def remove_entity(self, entity):
-        if entity == self.selected_character:
+    def add_entity(self, entity):
+        self.entity_list.append(entity)
+        self.z_order_sort_entities()
+
+    def remove_entities(self):
+        if self.selected_character is not None and self.selected_character.delete:
             self.selected_character = None
 
-        if entity in self.character_list:
-            self.character_list.remove(entity)
+        for i, o in enumerate(self.character_list):
+            if o.delete:
+                del self.character_list[i]
 
-        if entity in self.entity_list:
-            self.entity_list.remove(entity)
+        for i, o in enumerate(self.entity_list):
+            if o.delete:
+                del self.entity_list[i]
 
-        if entity in self.ai_manager.actors:
-            self.ai_manager.actors.remove(entity)
+        for i, o in enumerate(self.ai_manager.actors):
+            if o.delete:
+                del self.ai_manager.actors[i]
 
     def get_spawn(self):
         spawn_pos = self.spawn_points[self.spawns_used]
@@ -547,19 +554,6 @@ class TileMap:
     def display_skill(self, skill):
         self.clear_tinted_tiles()
         self.red_tinted_tiles = skill.display(self.mouse_coords)
-
-        if skill.get_data("area") == 0:
-            for e in self.character_list:
-                if not e.ally and self.line_of_sight(skill.user.position, e.position, skill.get_data("range")):
-                    self.red_tinted_tiles.add((e.position[0], e.position[1]))
-                    e.display_hit(skill)
-
-        elif not skill.get_data("line of sight") or self.line_of_sight(self.selected_character.position,
-                                                                       self.mouse_coords, skill.get_data("range")):
-            self.red_tinted_tiles = self.make_radius(self.mouse_coords, skill.get_data("area"), True)
-            for c in self.character_list:
-                if not c.ally and tuple(c.position) in self.red_tinted_tiles:
-                    c.display_hit(skill)
 
     def display_movement(self, this_character):
         self.possible_paths = self.find_all_paths(this_character.position, this_character.movement)
@@ -781,7 +775,7 @@ class TileMap:
         self.clear_tinted_tiles()
         if self.selected_character is not None:
             self.selected_character = self.selected_character.set_selected(False)
-        for c in self.character_list:
+        for c in self.entity_list:
             c.start_of_turn_update()
         self.interface.set_button_active("end turn", True)
 
@@ -789,6 +783,6 @@ class TileMap:
         self.clear_tinted_tiles()
         if self.selected_character is not None:
             self.selected_character = self.selected_character.set_selected(False)
-        for c in self.character_list:
+        for c in self.entity_list:
             c.end_of_turn_update()
         self.ai_manager.start_ai_turn()

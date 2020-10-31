@@ -24,7 +24,6 @@
 					"accuracy":100,
 					"crit chance":0,
 					"mana cost":0,
-					"line of sight":true,
 					"appearance":"none"
 				}
 			]

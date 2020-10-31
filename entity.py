@@ -17,6 +17,7 @@ class Entity:
         self.ally = False
         self.accepting_input = False
         self.intelligent = False
+        self.delete = False
 
     def __lt__(self, other):
         return self.get_z() < other.get_z()
@@ -42,3 +43,18 @@ class Entity:
 
     def end_of_turn_update(self):
         pass
+
+
+class DelayedSkill(Entity):
+    def __init__(self, position, entity_data, skill):
+        super().__init__(position, entity_data)
+        self.skill = skill
+        self.delay_turns = 1
+        if skill.get_data("delay turns") is not None:
+            self.delay_turns = skill.get_data("delay turns")
+
+    def start_of_turn_update(self):
+        self.delay_turns -= 1
+        if self.delay_turns <= 0 and self.skill.exec_secondary_skill(self.position, "delay"):
+            self.delete = True
+            self.skill.user.current_map.remove_entities()

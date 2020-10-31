@@ -22,7 +22,6 @@
 					"accuracy":100,
 					"crit chance":0,
 					"mana cost":0,
-					"line of sight":true,
 					"appearance":"none"
 				},
 				{
@@ -38,7 +37,22 @@
 					"accuracy":100,
 					"crit chance":0,
 					"mana cost":0,
-					"line of sight":true,
+					"appearance":"none"
+				},
+				{
+					"name":"Delayed Boom",
+					"display":"default",
+					"targeting":"default",
+					"effect":"place_delayed_explosion",
+					"delay":"delayed_explosion",
+					"desc":"Creates a delayed explosion at the start of your next turn.\nRange: 10\nArea: 2\nDamage: 3-4",
+					"range":10,
+					"area":3,
+					"min damage":3,
+					"max damage":4,
+					"accuracy":100,
+					"crit chance":0,
+					"mana cost":0,
 					"appearance":"none"
 				}
 			]

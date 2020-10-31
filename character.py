@@ -189,6 +189,10 @@ class Character(entity.Entity):
 
     def display_hit(self, skill):
         hit_chance = skill.get_data("accuracy")
+        if hit_chance > 100:
+            hit_chance = 100
+        elif hit_chance < 0:
+            hit_chance = 0
         self.chance_image.fill((0, 0, 0))
         self.chance_image_active = True
         draw_shadowed_text(self.chance_image, str(hit_chance) + "%", pygame.Color("white"),
@@ -208,6 +212,9 @@ class Character(entity.Entity):
 
     def damage(self, amount):
         self.health -= amount
+        if self.health <= 0:
+            self.delete = True
+            self.current_map.remove_entities()
         # gray out removed health
         for col in range(self.max_health - 1, self.health - 1, -1):
             row = math.floor(col / 10)

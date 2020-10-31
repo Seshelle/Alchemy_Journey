@@ -59,14 +59,18 @@ def exec_skill_func(key, skill_used, target):
 
 @skill_func
 def display_default(skill_used, tile_pos):
-    current_map = skill_used.user.current_map
+    tile_map = skill_used.user.current_map
+
     if skill_used.get_data("area") > 0:
-        attacked_tiles = current_map.make_radius(tile_pos, skill_used.get_data("area"), True)
+        if not tile_map.in_bounds(tile_pos, True) or \
+                not tile_map.line_of_sight(skill_used.user.position, tile_pos, skill_used.get_data("range")):
+            return set()
+        attacked_tiles = tile_map.make_radius(tile_pos, skill_used.get_data("area"), True)
         return attacked_tiles
     else:
         potential_targets = set()
-        for e in current_map.character_list:
-            if not e.ally and current_map.line_of_sight(skill_used.user.position, e.position,
+        for e in tile_map.character_list:
+            if not e.ally and tile_map.line_of_sight(skill_used.user.position, e.position,
                                                         skill_used.get_data("range")):
                 potential_targets.add((e.position[0], e.position[1]))
                 e.display_hit(skill_used)
@@ -80,6 +84,9 @@ def display_default(skill_used, tile_pos):
 @skill_func
 def target_default(skill_used, tile_pos):
     tile_map = skill_used.user.current_map
+    if not tile_map.in_bounds(tile_pos, True) or \
+            not tile_map.line_of_sight(skill_used.user.position, tile_pos, skill_used.get_data("range")):
+        return []
     attacked_tiles = tile_map.make_radius(tile_pos, skill_used.get_data("area"), True)
     targets = tile_map.get_characters_in_set(attacked_tiles)
     return targets

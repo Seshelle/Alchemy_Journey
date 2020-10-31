@@ -50,11 +50,11 @@ class DelayedSkill(Entity):
         super().__init__(position, entity_data)
         self.skill = skill
         self.delay_turns = 1
+        self.duration = 0
         if skill.get_data("delay turns") is not None:
             self.delay_turns = skill.get_data("delay turns")
 
     def start_of_turn_update(self):
-        self.delay_turns -= 1
-        if self.delay_turns <= 0 and self.skill.exec_secondary_skill(self.position, "delay"):
+        self.duration += 1
+        if self.duration >= self.delay_turns and self.skill.exec_secondary_skill(self.position, "delay"):
             self.delete = True
-            self.skill.user.current_map.remove_entities()

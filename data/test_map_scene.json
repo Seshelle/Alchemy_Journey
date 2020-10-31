@@ -27,6 +27,62 @@
 					"appearance":"none"
 				}
 			]
+		},
+		{
+			"team":1,
+			"spawn x":14,
+			"spawn y":-1,
+			"appearance":"images/tile041.png",
+			"avatar":"images/tile041.png",
+			"name":"Enemy",
+			"height":1.5,
+			"health":10,
+			"movement":5,
+			"skills":[
+				{
+					"name":"Stab",
+					"display":"default",
+					"targeting":"default",
+					"effect":"default",
+					"desc":"Stabs a dude.",
+					"range":1.5,
+					"area":0,
+					"min damage":1,
+					"max damage":2,
+					"accuracy":100,
+					"crit chance":0,
+					"mana cost":0,
+					"appearance":"none"
+				}
+			]
+		},
+		{
+			"team":1,
+			"spawn x":12,
+			"spawn y":-1,
+			"appearance":"images/tile041.png",
+			"avatar":"images/tile041.png",
+			"name":"Enemy",
+			"height":1.5,
+			"health":10,
+			"movement":5,
+			"skills":[
+				{
+					"name":"Stab",
+					"display":"default",
+					"targeting":"default",
+					"effect":"default",
+					"desc":"Stabs a dude.",
+					"range":1.5,
+					"area":0,
+					"min damage":1,
+					"max damage":2,
+					"accuracy":100,
+					"crit chance":0,
+					"mana cost":0,
+					"appearance":"none"
+				}
+			]
 		}
 	]
 }

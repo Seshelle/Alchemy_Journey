@@ -269,19 +269,19 @@ class TileMap:
     def upkeep(self, deltatime, screen):
         # move camera in response to key presses
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_w] and camera_pos[1] < -deltatime * camera_speed:
+        if keys[pygame.K_w]:
             camera_pos[1] += deltatime * camera_speed
 
-        if keys[pygame.K_s] and camera_pos[1] > -(self.map_height + 1) * tile_extent[1] \
-                + a_settings.display_height + deltatime * camera_speed:
+        if keys[pygame.K_s]:
             camera_pos[1] -= deltatime * camera_speed
 
-        if keys[pygame.K_a] and camera_pos[0] < -deltatime * camera_speed:
+        if keys[pygame.K_a]:
             camera_pos[0] += deltatime * camera_speed
 
-        if keys[pygame.K_d] and camera_pos[0] > -(self.map_width + 0.5) * tile_extent[0] * 2 \
-                + a_settings.display_width + deltatime * camera_speed:
+        if keys[pygame.K_d]:
             camera_pos[0] -= deltatime * camera_speed
+
+        self.move_camera_in_bounds()
 
         # create new tint layer if it has changed
         min_x = 999999
@@ -482,7 +482,17 @@ class TileMap:
             if event.key == pygame.K_TAB:
                 if self.selected_character is None:
                     self.selected_character = self.controlled_characters[0].set_selected(True)
-                pass
+                else:
+                    for i, c in enumerate(self.controlled_characters):
+                        if c.position == self.selected_character.position:
+                            self.controlled_characters[i].set_selected(False)
+                            if i + 1 < len(self.controlled_characters):
+                                self.selected_character = self.controlled_characters[i + 1].set_selected(True)
+                                break
+                            else:
+                                self.selected_character = self.controlled_characters[0].set_selected(True)
+                                break
+                self.move_camera_to_path(self.selected_character.position)
 
     def add_entities(self, filename):
         with open(filename) as f:
@@ -510,17 +520,45 @@ class TileMap:
         if self.selected_character is not None and self.selected_character.delete:
             self.selected_character = None
 
-        for i, o in enumerate(self.character_list):
-            if o.delete:
-                del self.character_list[i]
+        found = True
+        while found:
+            found = False
+            for i, o in enumerate(self.character_list):
+                if o.delete:
+                    del self.character_list[i]
+                    found = True
+                    break
 
-        for i, o in enumerate(self.entity_list):
-            if o.delete:
-                del self.entity_list[i]
+            for i, o in enumerate(self.entity_list):
+                if o.delete:
+                    del self.entity_list[i]
+                    found = True
+                    break
 
-        for i, o in enumerate(self.ai_manager.actors):
-            if o.delete:
-                del self.ai_manager.actors[i]
+            for i, o in enumerate(self.ai_manager.actors):
+                if o.delete:
+                    del self.ai_manager.actors[i]
+                    found = True
+                    break
+
+    def move_camera_to_path(self, tile):
+        target_pos = path_to_world((tile[0] + 2, tile[1]))
+        camera_pos[0] = -target_pos[0] + a_settings.display_width / 2
+        camera_pos[1] = -target_pos[1] + a_settings.display_height / 2
+        self.move_camera_in_bounds()
+
+    def move_camera_in_bounds(self):
+        if camera_pos[1] > 0:
+            camera_pos[1] = 0
+
+        if camera_pos[1] < -(self.map_height + 1) * tile_extent[1] + a_settings.display_height:
+            camera_pos[1] = -(self.map_height + 1) * tile_extent[1] + a_settings.display_height
+
+        if camera_pos[0] > 0:
+            camera_pos[0] = 0
+
+        if camera_pos[0] < -(self.map_width + 0.5) * tile_extent[0] * 2 + a_settings.display_width:
+            camera_pos[0] = -(self.map_width + 0.5) * tile_extent[0] * 2 + a_settings.display_width
 
     def get_spawn(self):
         spawn_pos = self.spawn_points[self.spawns_used]
@@ -778,6 +816,7 @@ class TileMap:
         for c in self.entity_list:
             c.start_of_turn_update()
         self.interface.set_button_active("end turn", True)
+        self.remove_entities()
 
     def end_turn(self):
         self.clear_tinted_tiles()
@@ -786,3 +825,4 @@ class TileMap:
         for c in self.entity_list:
             c.end_of_turn_update()
         self.ai_manager.start_ai_turn()
+        self.remove_entities()

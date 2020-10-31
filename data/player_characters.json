@@ -56,6 +56,63 @@
 					"appearance":"none"
 				}
 			]
+		},
+		{
+			"team":0,
+			"appearance":"images/tile041.png",
+			"avatar":"images/tile041.png",
+			"name":"Other",
+			"height":1.5,
+			"health":20,
+			"movement":5,
+			"skills":[
+				{
+					"name":"Boom",
+					"display":"default",
+					"targeting":"default",
+					"effect":"default",
+					"desc":"Creates an explosion.\nRange: 10\nArea: 2\nDamage: 1-2",
+					"range":10,
+					"area":2,
+					"min damage":1,
+					"max damage":2,
+					"accuracy":100,
+					"crit chance":0,
+					"mana cost":0,
+					"appearance":"none"
+				},
+				{
+					"name":"Shot",
+					"display":"default",
+					"targeting":"default",
+					"effect":"default",
+					"desc":"Shoots one enemy within sight.\nRange: 10\nDamage: 3-4",
+					"range":10,
+					"area":0,
+					"min damage":3,
+					"max damage":4,
+					"accuracy":100,
+					"crit chance":0,
+					"mana cost":0,
+					"appearance":"none"
+				},
+				{
+					"name":"Delayed Boom",
+					"display":"default",
+					"targeting":"default",
+					"effect":"place_delayed_explosion",
+					"delay":"delayed_explosion",
+					"desc":"Creates a delayed explosion at the start of your next turn.\nRange: 10\nArea: 2\nDamage: 3-4",
+					"range":10,
+					"area":3,
+					"min damage":3,
+					"max damage":4,
+					"accuracy":100,
+					"crit chance":0,
+					"mana cost":0,
+					"appearance":"none"
+				}
+			]
 		}
 	]
 }

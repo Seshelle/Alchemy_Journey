@@ -4,7 +4,6 @@ import tilemap
 import user_interface
 import math
 import skill_handler
-from random import randint
 from dialogue import draw_shadowed_text
 
 
@@ -32,6 +31,7 @@ class Character(entity.Entity):
         self.status_effects = []
 
         # attributes of this character
+        self.name = entity_data["name"]
         self.team = entity_data["team"]
         self.max_health = entity_data["health"]
         self.health = self.max_health
@@ -60,7 +60,7 @@ class Character(entity.Entity):
         self.skill_interface = user_interface.UserInterface()
         self.skill_interface.set_active(False)
         self.selected_skill = None
-        self.skill_interface.add_button((0.05, 0.8, 0.1, 0.05), entity_data["name"], "name", False)
+        self.skill_interface.add_button((0.05, 0.8, 0.1, 0.05), self.name, "name", False)
         for skill_data in entity_data["skills"]:
             self.add_skill(skill_handler.Skill(skill_data, self))
 

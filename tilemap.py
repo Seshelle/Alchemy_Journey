@@ -21,8 +21,8 @@ def path_to_map(coords):
 
 
 def map_to_path(coords):
-    # rotates path coordinates to map coordinates
-    # map coordinates are the actual stored coordinates of tiles
+    # rotates map coordinates to path coordinates
+    # path coordinates are what entities use for pathing and storing their position
     new_path = map_to_screen(coords)
     new_path = screen_to_path(new_path)
     new_path[0] += 1
@@ -50,7 +50,6 @@ def map_to_screen(map_xy):
 
 def screen_to_path(screen_xy):
     # turns a screen position into a path coordinate
-    # it is easier to calculate with path coordinates
     adjust_screen = [0, 0]
     adjust_screen[0] = screen_xy[0] - camera_pos[0]
     adjust_screen[1] = screen_xy[1] - camera_pos[1]
@@ -175,7 +174,10 @@ class TileMap:
         map_data = json.load(f)
         f.close()
 
-        self.scene = scenes[map_data["scene"]](self)
+        if "scene" in map_data.keys():
+            self.scene = scenes[map_data["scene"]](self)
+        else:
+            self.scene = scenes["Empty"]
 
         self.map_width = map_data["map width"]
         self.map_height = map_data["map height"]
@@ -270,35 +272,31 @@ class TileMap:
         self.character_list = []
         self.red_tinted_tiles = set()
         self.green_tinted_tiles = set()
-
-        # convenient groups
-        self.controlled_characters = []
-
-        # map scene user interface
         self.interface = user_interface.UserInterface()
         self.interface.add_button((0.9, 0.95, 0.15, 0.05), "End Turn", "end turn")
 
-        # AI manager
+        self.controlled_characters = []
         self.ai_manager = ai_manager.AIManager(self)
 
     def update(self, deltatime, screen):
-        self.scene.update()
+        self.scene.update(deltatime)
 
         # move camera in response to key presses
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_w]:
-            camera_pos[1] += deltatime * camera_speed
+        if self.scene.get_allow_input():
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_w]:
+                camera_pos[1] += deltatime * camera_speed
 
-        if keys[pygame.K_s]:
-            camera_pos[1] -= deltatime * camera_speed
+            if keys[pygame.K_s]:
+                camera_pos[1] -= deltatime * camera_speed
 
-        if keys[pygame.K_a]:
-            camera_pos[0] += deltatime * camera_speed
+            if keys[pygame.K_a]:
+                camera_pos[0] += deltatime * camera_speed
 
-        if keys[pygame.K_d]:
-            camera_pos[0] -= deltatime * camera_speed
+            if keys[pygame.K_d]:
+                camera_pos[0] -= deltatime * camera_speed
 
-        self.move_camera_in_bounds()
+            self.move_camera_in_bounds()
 
         # create new tint layer if it has changed
         min_x = 999999
@@ -409,7 +407,8 @@ class TileMap:
                 self.display_skill(selected_skill)
 
         # draw highlighted square around mouse position
-        screen.blit(self.selection_square, path_to_screen(self.mouse_coords))
+        if self.scene.get_allow_input():
+            screen.blit(self.selection_square, path_to_screen(self.mouse_coords))
 
         # draw all entities onscreen
         for e in self.entity_list:
@@ -430,15 +429,22 @@ class TileMap:
                                               self.tile_masks[attributes.tile_id]))
                 e.render(screen, masks)
 
+        self.scene.render(screen)
+
         # draw character UI elements
         for c in self.character_list:
             c.second_render(screen)
 
-        # draw tile map UI last
+        # draw map UI and scene UI last
         self.interface.render(screen)
+        self.scene.second_render(screen)
 
     def notify(self, event):
-        # check if map UI eats the input
+        # map scene gets first dibs on consuming input
+        if self.scene.notify(event):
+            return
+
+        # check if map UI consumes the input
         button_pressed = self.interface.notify(event)
         if button_pressed is not None:
             if button_pressed == "end turn":
@@ -446,7 +452,7 @@ class TileMap:
                 self.end_turn()
             return
 
-        # check if an entity's UI eats the input
+        # check if an entity's UI consumes the input
         for c in self.character_list:
             if c.notify(event):
                 return

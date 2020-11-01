@@ -70,7 +70,7 @@ class Character(entity.Entity):
     def get_render_pos(self):
         return self.visual_position
 
-    def upkeep(self, deltatime):
+    def update(self, deltatime):
         # animate along path if path is not empty
         if len(self.path) > 0:
             # set destination as next path node

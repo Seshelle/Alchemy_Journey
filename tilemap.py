@@ -1,4 +1,5 @@
 import pygame
+from scenes import scenes
 import character
 import alchemy_settings as a_settings
 import ai_manager
@@ -10,8 +11,6 @@ import json
 tile_extent = (64, 32)
 camera_speed = 0.5
 camera_pos = [0, 0]
-border_x = 4
-border_y = 10
 
 
 def path_to_map(coords):
@@ -174,11 +173,19 @@ class TileMap:
     def __init__(self, filename):
         f = open(filename)
         map_data = json.load(f)
+        f.close()
+
+        self.scene = scenes[map_data["scene"]](self)
+
         self.map_width = map_data["map width"]
         self.map_height = map_data["map height"]
-        self.background_offset = (-border_x * tile_extent[0] * 2, -border_y * tile_extent[1])
-        self.background = pygame.Surface([(self.map_width + 1 + border_x * 2) * tile_extent[0] * 2,
-                                          (self.map_height + 1 + border_y) * tile_extent[1] * 2]).convert()
+        border_width = map_data["border width"]
+        border_height = map_data["border height"]
+        camera_pos[0] = map_data["camera x"]
+        camera_pos[1] = map_data["camera y"]
+        self.background_offset = (-border_width * tile_extent[0] * 2, -border_height * tile_extent[1])
+        self.background = pygame.Surface([(self.map_width + 1 + border_width * 2) * tile_extent[0] * 2,
+                                          (self.map_height + 1 + border_height) * tile_extent[1] * 2]).convert()
         self.tint_layer = pygame.Surface([(self.map_width + 1) * tile_extent[0] * 2,
                                           (self.map_height + 1) * tile_extent[1] * 2]).convert()
         self.tint_layer.fill((0, 0, 0))
@@ -229,10 +236,10 @@ class TileMap:
         border_image.fill((120, 120, 120), special_flags=pygame.BLEND_MULT)
 
         # blit each tile to the map, put grayed out borders outside map edge
-        for row in range(-border_y, self.map_height + border_y):
-            for col in range(-border_x, self.map_width + border_x):
-                x = ((col + border_x) * tile_extent[0] + tile_extent[1] * (row % 2)) * 2
-                y = (row + border_y) * tile_extent[1]
+        for row in range(-border_height, self.map_height + border_height):
+            for col in range(-border_width, self.map_width + border_width):
+                x = ((col + border_width) * tile_extent[0] + tile_extent[1] * (row % 2)) * 2
+                y = (row + border_height) * tile_extent[1]
                 if col < 0 or row < 0 or row >= self.map_height or col >= self.map_width:
                     self.background.blit(border_image, (x, y))
                 else:
@@ -274,7 +281,9 @@ class TileMap:
         # AI manager
         self.ai_manager = ai_manager.AIManager(self)
 
-    def upkeep(self, deltatime, screen):
+    def update(self, deltatime, screen):
+        self.scene.update()
+
         # move camera in response to key presses
         keys = pygame.key.get_pressed()
         if keys[pygame.K_w]:
@@ -404,11 +413,11 @@ class TileMap:
 
         # draw all entities onscreen
         for e in self.entity_list:
-            e.upkeep(deltatime)
+            e.update(deltatime)
             # draw the entity if it is onscreen
             render_pos = e.get_render_pos()
             if onscreen_path(render_pos):
-                # mask the entity's image where a tile is overlapping it
+                # mask over the entity's image where an object is overlapping it
                 tile_pos = (round(render_pos[0]), round(render_pos[1]))
                 masks = []
                 for offset in [(0, 1), (1, 0), (1, 1)]:
@@ -421,14 +430,15 @@ class TileMap:
                                               self.tile_masks[attributes.tile_id]))
                 e.render(screen, masks)
 
-        # draw character UI elements last
+        # draw character UI elements
         for c in self.character_list:
             c.second_render(screen)
 
-        # finally draw tile map UI
+        # draw tile map UI last
         self.interface.render(screen)
 
     def notify(self, event):
+        # check if map UI eats the input
         button_pressed = self.interface.notify(event)
         if button_pressed is not None:
             if button_pressed == "end turn":
@@ -447,17 +457,17 @@ class TileMap:
             if event.button == 1:
                 # check if skill or movement is selected
                 free_aim = False
-                selected_skill = None
                 if self.selected_character is not None:
                     selected_skill = self.selected_character.get_selected_skill()
                     if selected_skill is not None and selected_skill.get_data("area") > 0:
                         free_aim = True
 
                 if not free_aim:
-                    # if a character is clicked on, select them
+                    # find if tile is occupied by a character
                     for c in self.character_list:
                         if mouse_coords == c.position:
 
+                            # when an enemy is clicked on while a skill is selected, try to use the skill
                             if not c.ally and self.selected_character is not None and \
                                     self.selected_character.use_skill(mouse_coords):
                                 return
@@ -490,6 +500,7 @@ class TileMap:
 
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_TAB:
+                self.clear_tinted_tiles()
                 if self.selected_character is None:
                     self.selected_character = self.controlled_characters[0].set_selected(True)
                 else:
@@ -502,6 +513,8 @@ class TileMap:
                             else:
                                 self.selected_character = self.controlled_characters[0].set_selected(True)
                                 break
+                self.move_camera_to_path(self.selected_character.position)
+            elif event.key == pygame.K_SPACE:
                 self.move_camera_to_path(self.selected_character.position)
 
     def add_entities(self, filename):

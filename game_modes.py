@@ -24,6 +24,7 @@ class MainMenu(GameMode):
         self.interface.add_button((0.5, 0.65, 0.2, 0.1), "Quit", "quit")
 
     def update(self, deltatime):
+        self.screen.fill((0, 0, 0))
         self.interface.render(self.screen)
         return None
 
@@ -41,13 +42,16 @@ class MainMenu(GameMode):
 class MapScene(GameMode):
     def __init__(self, screen, filename):
         super().__init__(screen)
+
         self.interface = user_interface.UserInterface()
+        self.interface.add_button((0.9, 0.05, 0.1, 0.05), "Menu", "quit")
+
         self.current_map = tilemap.TileMap(filename)
         self.current_map.add_entities('data/player_characters.json')
         self.current_map.add_entities('data/test_map_scene.json')
 
     def update(self, deltatime):
-        self.current_map.upkeep(deltatime, self.screen)
+        self.current_map.update(deltatime, self.screen)
         self.interface.render(self.screen)
         return None
 

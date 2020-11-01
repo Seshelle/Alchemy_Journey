@@ -1,6 +1,6 @@
 {
 	"lines":[
-		{"text":"Hello world."},
+		{"speaker":"Jimbo", "text":"Hello world."},
 		{"text":"This is a test."}
 	]
 }

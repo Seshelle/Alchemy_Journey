@@ -31,7 +31,7 @@ class Entity:
     def get_render_pos(self):
         return self.position
 
-    def upkeep(self, deltatime):
+    def update(self, deltatime):
         pass
 
     def render(self, screen, masks=None):

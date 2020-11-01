@@ -1,4 +1,5 @@
 {
+	"scene":"Tutorial",
 	"tile sheet":"images/basic_ground_tiles.png",
 	"sheet col":8,
 	"sheet row":7,
@@ -8,11 +9,13 @@
 	"map height":50,
 	"border width": 4,
 	"border height": 10,
+	"camera x":0,
+	"camera y": 0,
 	"characters":[
 		{
 			"team":1,
 			"spawn x":10,
-			"spawn y":-1,
+			"spawn y":0,
 			"appearance":"images/tile041.png",
 			"avatar":"images/tile041.png",
 			"name":"Enemy",

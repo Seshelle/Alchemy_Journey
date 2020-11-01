@@ -60,9 +60,11 @@ class Dialogue:
         self.current_line = 0
         self.font = pygame.font.SysFont(None, 48)
         self.text = " "
+        self.text_color = pygame.Color("white")
         self.speaker = " "
+        self.speaker_color = pygame.Color("white")
 
-        self.surface = pygame.Surface((a_settings.display_width * 2 / 3, a_settings.display_height / 2)).convert()
+        self.speech = pygame.Surface((a_settings.display_width * 2 / 3, a_settings.display_height / 2)).convert()
         self.needs_update = False
 
         self.next_line()
@@ -73,7 +75,7 @@ class Dialogue:
     def render(self, screen):
         if self.needs_update:
             screen.fill(pygame.Color("blue"))
-            screen.blit(self.surface, (a_settings.display_width / 6, a_settings.display_height / 2))
+            screen.blit(self.speech, (a_settings.display_width / 6, a_settings.display_height / 2))
             self.needs_update = False
 
     def notify(self, event):
@@ -83,10 +85,27 @@ class Dialogue:
     def next_line(self):
         # grab next line from file and render it to a surface once
         if self.current_line < len(self.dialogue["lines"]):
-            self.text = self.dialogue["lines"][self.current_line]["text"]
-            self.surface.fill(pygame.Color("black"))
-            draw_text(self.surface, self.text, (255, 255, 255),
-                      (0, 0, self.surface.get_width(), self.surface.get_height()),
+
+            # get next line of speech from file
+            line = self.text = self.dialogue["lines"][self.current_line]
+            self.text = line["text"]
+            self.speech.fill(pygame.Color("brown"))
+
+            # if a new speaker is defined for the line, draw it to title line
+            if "speaker" in line.keys():
+                self.speaker = line["speaker"]
+
+            title_height = 60
+            title_pad_top = 10
+            title_pad_left = 10
+            speech_pad_left = 20
+            draw_text(self.speech, self.speaker, pygame.Color("white"),
+                      (title_pad_left, title_pad_top,
+                       self.speech.get_width(), title_height),
+                      self.font, True)
+            draw_text(self.speech, self.text, pygame.Color("white"),
+                      (speech_pad_left, title_height,
+                       self.speech.get_width() - speech_pad_left * 2, self.speech.get_height() - title_height),
                       self.font, True)
             self.needs_update = True
         self.current_line += 1

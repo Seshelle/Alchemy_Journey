@@ -15,7 +15,6 @@ runtime = 0
 crashed = False
 debug = False
 super_debug = False
-debug_string = ""
 
 # set up fonts
 basicFont = pygame.font.SysFont(None, 36)

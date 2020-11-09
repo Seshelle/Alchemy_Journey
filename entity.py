@@ -5,8 +5,8 @@ import tilemap
 
 
 class Entity:
-
     def __init__(self, position, entity_data):
+        self.data = entity_data
         # load appearance
         self.appearance = pygame.image.load(entity_data["appearance"]).convert()
         self.appearance.set_colorkey(pygame.Color("black"))
@@ -38,10 +38,10 @@ class Entity:
         screen_pos = tilemap.path_to_screen(self.position)
         screen.blit(self.appearance, (screen_pos[0], screen_pos[1] - self.height))
 
-    def start_of_turn_update(self):
+    def start_of_round_update(self):
         pass
 
-    def end_of_turn_update(self):
+    def end_of_round_update(self):
         pass
 
 
@@ -49,12 +49,7 @@ class DelayedSkill(Entity):
     def __init__(self, position, entity_data, skill):
         super().__init__(position, entity_data)
         self.skill = skill
-        self.delay_turns = 1
-        self.duration = 0
-        if skill.get_data("delay turns") is not None:
-            self.delay_turns = skill.get_data("delay turns")
 
-    def start_of_turn_update(self):
-        self.duration += 1
-        if self.duration >= self.delay_turns and self.skill.exec_secondary_skill(self.position, "delay"):
+    def start_of_round_update(self):
+        if self.skill.exec_skill(self.position):
             self.delete = True

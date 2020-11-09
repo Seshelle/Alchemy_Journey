@@ -1,16 +1,28 @@
 import pygame
 from scenes import scenes
 import character
+from character import CharacterKeys
 import alchemy_settings as a_settings
 import ai_manager
 import user_interface
 import math
-import random
 import json
 
 tile_extent = (64, 32)
-camera_speed = 0.5
-camera_pos = [0, 0]
+
+
+class Camera:
+    speed = 0.5
+    pos = [0, 0]
+    zoom = 1
+
+
+class TileKeys:
+    tiles = "tiles"
+    walkable = "walk"
+    id = "id"
+    height = "height"
+    line_of_sight = "los"
 
 
 def path_to_map(coords):
@@ -35,28 +47,30 @@ def path_to_screen(path_xy, camera=True):
     screen_xy[0] = (path_xy[0] - path_xy[1]) * tile_extent[0]
     screen_xy[1] = (path_xy[1] + path_xy[0]) * tile_extent[1]
     if camera:
-        screen_xy[0] += camera_pos[0]
-        screen_xy[1] += camera_pos[1]
+        screen_xy[0] = screen_xy[0] * Camera.zoom + Camera.pos[0]
+        screen_xy[1] = screen_xy[1] * Camera.zoom + Camera.pos[1]
     return screen_xy
 
 
 def map_to_screen(map_xy):
     # returns the screen position of a tile
     screen_xy = [0, 0]
-    screen_xy[0] = map_xy[0] * 128 + 64 * (map_xy[1] % 2) + camera_pos[0]
-    screen_xy[1] = map_xy[1] * 32 + camera_pos[1]
+    screen_xy[0] = map_xy[0] * tile_extent[0] * 2 + tile_extent[0] * (map_xy[1] % 2)
+    screen_xy[1] = map_xy[1] * tile_extent[1]
+    screen_xy[0] = screen_xy[0] * Camera.zoom + Camera.pos[0]
+    screen_xy[1] = screen_xy[1] * Camera.zoom + Camera.pos[1]
     return screen_xy
 
 
 def screen_to_path(screen_xy):
     # turns a screen position into a path coordinate
     adjust_screen = [0, 0]
-    adjust_screen[0] = screen_xy[0] - camera_pos[0]
-    adjust_screen[1] = screen_xy[1] - camera_pos[1]
+    adjust_screen[0] = screen_xy[0] - Camera.pos[0]
+    adjust_screen[1] = screen_xy[1] - Camera.pos[1]
+    adjust_screen[0] /= Camera.zoom
+    adjust_screen[1] /= Camera.zoom
     coords_xy = [0, 0]
-    # tilePos.x = (scenePos.x/tileExtents.x + scenePos.y/tileExtents.y) * 0.5f;
     coords_xy[0] = math.floor((adjust_screen[0] / tile_extent[0] + adjust_screen[1] / tile_extent[1]) * 0.5 - 0.5)
-    # tilePos.y = (scenePos.y/tileExtents.y - scenePos.x/tileExtents.x) * 0.5f
     coords_xy[1] = math.floor((adjust_screen[1] / tile_extent[1] - adjust_screen[0] / tile_extent[0]) * 0.5 + 0.5)
     return coords_xy
 
@@ -152,13 +166,6 @@ class Node:
         return self.position == other.position
 
 
-class Tile:
-    def __init__(self, tile_id, height=0, walkable=True):
-        self.tile_id = tile_id
-        self.walkable = walkable
-        self.height = height
-
-
 class Mask:
     def __init__(self, position, height, image):
         self.position = position
@@ -177,19 +184,23 @@ class TileMap:
         if "scene" in map_data.keys():
             self.scene = scenes[map_data["scene"]](self)
         else:
-            self.scene = scenes["Empty"]
+            self.scene = None
 
         self.map_width = map_data["map width"]
         self.map_height = map_data["map height"]
-        border_width = map_data["border width"]
-        border_height = map_data["border height"]
-        camera_pos[0] = map_data["camera x"]
-        camera_pos[1] = map_data["camera y"]
-        self.background_offset = (-border_width * tile_extent[0] * 2, -border_height * tile_extent[1])
-        self.background = pygame.Surface([(self.map_width + 1 + border_width * 2) * tile_extent[0] * 2,
-                                          (self.map_height + 1 + border_height) * tile_extent[1] * 2]).convert()
+        self.border_width = map_data["border width"]
+        self.border_height = map_data["border height"]
+        Camera.pos[0] = map_data["camera x"]
+        Camera.pos[1] = map_data["camera y"]
+        self.background_offset = (-self.border_width * tile_extent[0] * 2, -self.border_height * tile_extent[1])
+        self.background = pygame.Surface([(self.map_width + self.border_width * 2 + 1) * tile_extent[0] * 2,
+                                          (self.map_height + self.border_height * 2 + 1) * tile_extent[1]]).convert()
+        self.zoomed_bg = None
         self.tint_layer = pygame.Surface([(self.map_width + 1) * tile_extent[0] * 2,
-                                          (self.map_height + 1) * tile_extent[1] * 2]).convert()
+                                          (self.map_height + 1) * tile_extent[1]]).convert()
+        self.zoomed_tint_layer = None
+        self.bg_cutout = None
+        self.tint_rect = (0, 0, 0, 0)
         self.tint_layer.fill((0, 0, 0))
         self.tint_layer.set_colorkey((0, 0, 0))
         self.tint_layer.set_alpha(75)
@@ -224,29 +235,10 @@ class TileMap:
         # read map data from file
         self.spawn_points = [(3, 0), (5, 0)]
         self.spawns_used = 0
-        self.tile_list = dict()
-        random.seed(3)
-        for row in range(self.map_height):
-            for col in range(self.map_width):
-                if random.random() < 0.8:
-                    self.tile_list[(col, row)] = Tile(0)
-                else:
-                    self.tile_list[(col, row)] = Tile(14, round(tile_extent[1] * 3 / 2), False)
+        with open(map_data["map file"], 'r') as map_file:
+            self.tile_list = json.load(map_file)
 
-        # create a grayed out border image
-        border_image = self.ground_tiles[14].copy()
-        border_image.fill((120, 120, 120), special_flags=pygame.BLEND_MULT)
-
-        # blit each tile to the map, put grayed out borders outside map edge
-        for row in range(-border_height, self.map_height + border_height):
-            for col in range(-border_width, self.map_width + border_width):
-                x = ((col + border_width) * tile_extent[0] + tile_extent[1] * (row % 2)) * 2
-                y = (row + border_height) * tile_extent[1]
-                if col < 0 or row < 0 or row >= self.map_height or col >= self.map_width:
-                    self.background.blit(border_image, (x, y))
-                else:
-                    attributes = self.tile_list[(col, row)]
-                    self.background.blit(self.ground_tiles[attributes.tile_id], (x, y - attributes.height))
+        self.create_background()
 
         # initialize other images
         self.selection_square = pygame.image.load("images/selection_square.png").convert()
@@ -274,77 +266,105 @@ class TileMap:
         self.green_tinted_tiles = set()
         self.interface = user_interface.UserInterface()
         self.interface.add_button((0.9, 0.95, 0.15, 0.05), "End Turn", "end turn")
-
         self.controlled_characters = []
         self.ai_manager = ai_manager.AIManager(self)
 
+        self.add_entities(filename)
+        self.add_entities('data/player_characters.json')
+
+    def create_background(self):
+        # create a grayed out border image
+        border_image = self.ground_tiles[14].copy()
+        border_image.fill((120, 120, 120), special_flags=pygame.BLEND_MULT)
+
+        # blit each tile to the map, put grayed out borders outside map edge
+        self.background.fill((0, 0, 0))
+        for row in range(-self.border_height, self.map_height + self.border_height):
+            for col in range(-self.border_width, self.map_width + self.border_width):
+                x = (col * tile_extent[0] + tile_extent[1] * (row % 2)) * 2 - self.background_offset[0]
+                y = row * tile_extent[1] - self.background_offset[1]
+                if col < 0 or row < 0 or row >= self.map_height or col >= self.map_width:
+                    self.background.blit(border_image, (x, y))
+                else:
+                    tiles = self.get_tile_attributes((col, row))[TileKeys.tiles]
+                    for tile in tiles:
+                        if tile[TileKeys.id] >= 0:
+                            self.background.blit(self.ground_tiles[tile[TileKeys.id]], (x, y - tile[TileKeys.height]))
+        self.zoom_background()
+
     def update(self, deltatime, screen):
-        self.scene.update(deltatime)
+        if self.scene is not None:
+            has_scene = True
+            self.scene.update(deltatime)
+        else:
+            has_scene = False
 
         # move camera in response to key presses
-        if self.scene.get_allow_input():
+        if not has_scene or self.scene.get_allow_input():
             keys = pygame.key.get_pressed()
             if keys[pygame.K_w]:
-                camera_pos[1] += deltatime * camera_speed
+                Camera.pos[1] += deltatime * Camera.speed
 
             if keys[pygame.K_s]:
-                camera_pos[1] -= deltatime * camera_speed
+                Camera.pos[1] -= deltatime * Camera.speed
 
             if keys[pygame.K_a]:
-                camera_pos[0] += deltatime * camera_speed
+                Camera.pos[0] += deltatime * Camera.speed
 
             if keys[pygame.K_d]:
-                camera_pos[0] -= deltatime * camera_speed
+                Camera.pos[0] -= deltatime * Camera.speed
 
             self.move_camera_in_bounds()
 
-        # create new tint layer if it has changed
-        min_x = 999999
-        min_y = 999999
-        max_x = 0
-        max_y = 0
+        # create offset used by tint_layer
+        real_offset = [0, 0]
+        real_offset[0] = self.background_offset[0] * Camera.zoom
+        real_offset[1] = self.background_offset[1] * Camera.zoom
+
+        # create new tint layer if it has changed, then apply it to the background
+        bottom_right = [-99999, -99999]
+        upper_left = [0, 0]
         if self.tint_layer_update:
             self.tint_layer_update = False
+            # remove previous tint by overwriting it with a stored piece of clean background
+            if self.bg_cutout is not None:
+                self.zoomed_bg.blit(
+                    self.background,
+                    (self.tint_rect[0] - real_offset[0], self.tint_rect[1] - real_offset[1]),
+                    (self.tint_rect[0] - real_offset[0], self.tint_rect[1] - real_offset[1], self.tint_rect[2], self.tint_rect[3])
+                    )
             for tile in self.red_tinted_tiles:
                 tint_pos = path_to_world(tile)
-                if tint_pos[0] < min_x:
-                    min_x = tint_pos[0]
-                if tint_pos[0] > max_x:
-                    max_x = tint_pos[0]
-                if tint_pos[1] < min_y:
-                    min_y = tint_pos[1]
-                if tint_pos[1] > max_y:
-                    max_y = tint_pos[1]
+                upper_left = [min(upper_left[0], tint_pos[0]), min(upper_left[1], tint_pos[1])]
+                bottom_right = [max(bottom_right[0], tint_pos[0]), max(bottom_right[1], tint_pos[1])]
                 self.tint_layer.blit(self.red_tile_tint, tint_pos)
 
             for tile in self.green_tinted_tiles:
                 tint_pos = path_to_world(tile)
-                if tint_pos[0] < min_x:
-                    min_x = tint_pos[0]
-                if tint_pos[0] > max_x:
-                    max_x = tint_pos[0]
-                if tint_pos[1] < min_y:
-                    min_y = tint_pos[1]
-                if tint_pos[1] > max_y:
-                    max_y = tint_pos[1]
+                upper_left = [min(upper_left[0], tint_pos[0]), min(upper_left[1], tint_pos[1])]
+                bottom_right = [max(bottom_right[0], tint_pos[0]), max(bottom_right[1], tint_pos[1])]
                 self.tint_layer.blit(self.green_tile_tint, tint_pos)
 
-            # find area of tint layer that needs to be rendered
-            self.tint_layer_rect = (min_x, min_y,
-                                    max_x - min_x + tile_extent[0] * 2,
-                                    max_y - min_y + tile_extent[1] * 2)
+            self.zoomed_tint_layer = self.zoom_image(self.tint_layer)
+            self.tint_rect = (
+                upper_left[0],
+                upper_left[1],
+                (bottom_right[0] + tile_extent[0] * 2) * Camera.zoom,
+                (bottom_right[1] + tile_extent[1] * 2) * Camera.zoom
+            )
+            # create a cutout of the background for removing the tint later
+            if len(self.red_tinted_tiles) + len(self.green_tinted_tiles) > 0:
+                self.bg_cutout = pygame.Surface((self.tint_rect[2], self.tint_rect[3]))
+                self.bg_cutout.blit(self.zoomed_bg,
+                                    (self.tint_rect[0] + real_offset[0], self.tint_rect[1] + real_offset[1]))
+                self.zoomed_bg.blit(self.zoomed_tint_layer, (-real_offset[0], -real_offset[1]), self.tint_rect)
+            else:
+                self.bg_cutout = None
 
         # draw background first
-        screen_rect = (-camera_pos[0], -camera_pos[1],
-                       a_settings.display_width - self.background_offset[0],
-                       a_settings.display_height - self.background_offset[1])
-        screen.blit(self.background, self.background_offset, screen_rect)
-
-        # render tint layer over background
-        if len(self.red_tinted_tiles) + len(self.green_tinted_tiles) > 0:
-            screen.blit(self.tint_layer,
-                        (camera_pos[0] + self.tint_layer_rect[0], camera_pos[1] + self.tint_layer_rect[1]),
-                        self.tint_layer_rect)
+        real_offset[0] += Camera.pos[0]
+        real_offset[1] += Camera.pos[1]
+        screen.blit(self.zoomed_bg, real_offset)
 
         # update mouse coordinates when mouse moves to new tile
         mouse_change = False
@@ -352,50 +372,56 @@ class TileMap:
             self.mouse_coords = screen_to_path(pygame.mouse.get_pos())
             mouse_change = True
 
+        zoom_selection = self.zoom_image(self.selection_square)
         # draw path from selected ally entity to highlighted tile
         if self.selected_character is not None:
-            screen.blit(self.selection_square, path_to_screen(self.selected_character.position))
+            screen.blit(zoom_selection, path_to_screen(self.selected_character.position))
             selected_skill = self.selected_character.get_selected_skill()
 
             if self.selected_character.accepting_input and selected_skill is None and self.selected_character.has_move:
                 # calculate a new path whenever destination changes
                 if mouse_change:
-                    self.path = self.find_path(self.selected_character.position,
-                                               self.mouse_coords, self.selected_character.movement)
+                    self.path = self.find_path(
+                        self.selected_character.position,
+                        self.mouse_coords,
+                        self.selected_character.get_data(CharacterKeys.movement))
 
                 # draw arrows along path in direction of path
                 if len(self.path) > 1:
                     last_loc = self.path[0]
-                    offset = -tile_extent[1]
+                    offset = -tile_extent[1] * Camera.zoom
+                    diagonal_arrow = self.zoom_image(self.path_arrow)
+                    horizontal_arrow = self.zoom_image(self.path_arrow_horizontal)
+                    vertical_arrow = self.zoom_image(self.path_arrow_vertical)
                     for loc in self.path[1:]:
                         arrow = None
                         if last_loc[0] > loc[0]:
                             if last_loc[1] > loc[1]:
                                 # up arrow
-                                arrow = pygame.transform.flip(self.path_arrow_vertical, False, True)
+                                arrow = pygame.transform.flip(vertical_arrow, False, True)
                             elif last_loc[1] < loc[1]:
                                 # left arrow
-                                arrow = pygame.transform.flip(self.path_arrow_horizontal, True, False)
+                                arrow = pygame.transform.flip(horizontal_arrow, True, False)
                             else:
                                 # up-left arrow
-                                arrow = pygame.transform.flip(self.path_arrow, True, True)
+                                arrow = pygame.transform.flip(diagonal_arrow, True, True)
                         elif last_loc[0] < loc[0]:
                             if last_loc[1] > loc[1]:
                                 # right arrow
-                                arrow = self.path_arrow_horizontal
+                                arrow = horizontal_arrow
                             elif last_loc[1] < loc[1]:
                                 # down arrow
-                                arrow = self.path_arrow_vertical
+                                arrow = vertical_arrow
                             else:
                                 # down-right arrow
-                                arrow = self.path_arrow
+                                arrow = diagonal_arrow
                         else:
                             if last_loc[1] > loc[1]:
                                 # up-right arrow
-                                arrow = pygame.transform.flip(self.path_arrow, False, True)
+                                arrow = pygame.transform.flip(diagonal_arrow, False, True)
                             elif last_loc[1] < loc[1]:
                                 # down-left arrow
-                                arrow = pygame.transform.flip(self.path_arrow, True, False)
+                                arrow = pygame.transform.flip(diagonal_arrow, True, False)
                             else:
                                 print("ERROR: supplied path contains duplicate points")
 
@@ -407,8 +433,8 @@ class TileMap:
                 self.display_skill(selected_skill)
 
         # draw highlighted square around mouse position
-        if self.scene.get_allow_input():
-            screen.blit(self.selection_square, path_to_screen(self.mouse_coords))
+        if not has_scene or self.scene.get_allow_input():
+            screen.blit(zoom_selection, path_to_screen(self.mouse_coords))
 
         # draw all entities onscreen
         for e in self.entity_list:
@@ -423,13 +449,14 @@ class TileMap:
                     new_tile = (tile_pos[0] + offset[0], tile_pos[1] + offset[1])
                     if self.in_bounds(new_tile, False):
                         map_tile = path_to_map(new_tile)
-                        attributes = self.tile_list[tuple(map_tile)]
-                        if attributes.height > 0:
-                            masks.append(Mask(new_tile, attributes.height,
-                                              self.tile_masks[attributes.tile_id]))
+                        tiles = self.get_tile_attributes(map_tile)[TileKeys.tiles]
+                        for tile in tiles:
+                            if tile[TileKeys.height] > 0:
+                                masks.append(Mask(new_tile, tile[TileKeys.height], self.tile_masks[tile[TileKeys.id]]))
                 e.render(screen, masks)
 
-        self.scene.render(screen)
+        if has_scene:
+            self.scene.render(screen)
 
         # draw character UI elements
         for c in self.character_list:
@@ -437,7 +464,8 @@ class TileMap:
 
         # draw map UI and scene UI last
         self.interface.render(screen)
-        self.scene.second_render(screen)
+        if has_scene:
+            self.scene.second_render(screen)
 
     def notify(self, event):
         # map scene gets first dibs on consuming input
@@ -522,6 +550,21 @@ class TileMap:
                 self.move_camera_to_path(self.selected_character.position)
             elif event.key == pygame.K_SPACE:
                 self.move_camera_to_path(self.selected_character.position)
+            elif event.key == pygame.K_UP or event.key == pygame.K_DOWN:
+                zoom_step = 0.05
+                zoom_min = 0.6
+                zoom_max = 1
+                if event.key == pygame.K_UP:
+                    Camera.zoom -= zoom_step
+                    if Camera.zoom < zoom_min:
+                        Camera.zoom = zoom_min
+                else:
+                    Camera.zoom += zoom_step
+                    if Camera.zoom > zoom_max:
+                        Camera.zoom = zoom_max
+                self.zoom_background()
+                self.tint_layer_update = True
+                self.move_camera_in_bounds()
 
     def add_entities(self, filename):
         with open(filename) as f:
@@ -571,23 +614,44 @@ class TileMap:
                     break
 
     def move_camera_to_path(self, tile):
+        # TODO: make camera lerp instead of teleporting
         target_pos = path_to_world((tile[0] + 2, tile[1]))
-        camera_pos[0] = -target_pos[0] + a_settings.display_width / 2
-        camera_pos[1] = -target_pos[1] + a_settings.display_height / 2
+        Camera.pos[0] = -target_pos[0] + a_settings.display_width / 2
+        Camera.pos[1] = -target_pos[1] + a_settings.display_height / 2
         self.move_camera_in_bounds()
 
     def move_camera_in_bounds(self):
-        if camera_pos[1] > -self.background_offset[1] - tile_extent[1]:
-            camera_pos[1] = -self.background_offset[1] - tile_extent[1]
+        y_max = -(self.background_offset[1] + tile_extent[1]) * Camera.zoom
+        if Camera.pos[1] > y_max:
+            Camera.pos[1] = y_max
 
-        if camera_pos[1] < -self.map_height * tile_extent[1] + a_settings.display_height + self.background_offset[1]:
-            camera_pos[1] = -self.map_height * tile_extent[1] + a_settings.display_height + self.background_offset[1]
+        y_min = (-self.map_height * tile_extent[1] + self.background_offset[1]) * Camera.zoom + a_settings.display_height
+        if Camera.pos[1] < y_min:
+            Camera.pos[1] = y_min
 
-        if camera_pos[0] > -self.background_offset[0] - tile_extent[0]:
-            camera_pos[0] = -self.background_offset[0] - tile_extent[0]
+        x_max = -(self.background_offset[0] + tile_extent[0]) * Camera.zoom
+        if Camera.pos[0] > x_max:
+            Camera.pos[0] = x_max
 
-        if camera_pos[0] < -self.map_width * tile_extent[0] * 2 + a_settings.display_width + self.background_offset[0]:
-            camera_pos[0] = -self.map_width * tile_extent[0] * 2 + a_settings.display_width + self.background_offset[0]
+        x_min = (-self.map_width * tile_extent[0] * 2 + self.background_offset[0]) * Camera.zoom + a_settings.display_width
+        if Camera.pos[0] < x_min:
+            Camera.pos[0] = x_min
+
+    def zoom_background(self):
+        self.zoomed_bg = pygame.transform.scale(
+            self.background,
+            (round(self.background.get_width() * Camera.zoom), round(self.background.get_height() * Camera.zoom))
+        )
+        self.bg_cutout = None
+
+    def zoom_image(self, image):
+        if Camera.zoom != 1:
+            zoomed = pygame.transform.scale(
+                image,
+                (round(image.get_width() * Camera.zoom), round(image.get_height() * Camera.zoom))
+            )
+            return zoomed
+        return image
 
     def get_spawn(self):
         spawn_pos = self.spawn_points[self.spawns_used]
@@ -596,19 +660,28 @@ class TileMap:
 
     def get_tile_path(self, coords):
         map_coords = path_to_map(coords)
-        return self.tile_list[(map_coords[0], map_coords[1])]
+        return self.get_tile_attributes(map_coords)
+
+    def get_tile_attributes(self, tile_pos):
+        return self.tile_list[str(tile_pos[0]) + ',' + str(tile_pos[1])]
+
+    def set_tile_attributes(self, tile_pos, tile_data):
+        self.tile_list[str(tile_pos[0]) + ',' + str(tile_pos[1])] = tile_data
 
     def z_order_sort_entities(self):
         self.entity_list.sort()
 
-    def in_bounds(self, coords, walkable_only):
+    def in_bounds(self, coords, walkable_only, need_los=False):
         # valid if: x >= y, x + y > 0, x + y < map_height, x - y < map_width * 2
         if coords[0] < abs(coords[1]) or coords[0] + coords[1] >= self.map_height \
                 or coords[0] - coords[1] >= self.map_width * 2:
             return False
+        valid = True
         if walkable_only:
-            return self.get_tile_path(coords).walkable
-        return True
+            valid = self.get_tile_path(coords)[TileKeys.walkable]
+        if need_los:
+            valid = valid and self.get_tile_path(coords)[TileKeys.line_of_sight]
+        return valid
 
     def clear_tinted_tiles(self):
         for tile in self.red_tinted_tiles.union(self.green_tinted_tiles):
@@ -623,7 +696,7 @@ class TileMap:
         self.red_tinted_tiles = skill.display(self.mouse_coords)
 
     def display_movement(self, this_character):
-        self.possible_paths = self.find_all_paths(this_character.position, this_character.movement)
+        self.possible_paths = self.find_all_paths(this_character.position, this_character.get_data(CharacterKeys.movement))
         # self.last_path_test = character.position
         # show possible movement tiles for selected character
         self.clear_tinted_tiles()
@@ -638,7 +711,7 @@ class TileMap:
                 inside.append(c)
         return inside
 
-    def make_radius(self, center, radius, walkable_only):
+    def make_radius(self, center, radius, walkable_only, need_los=False):
         open_list = set()
         closed_list = set()
         open_list.add((center[0], center[1]))
@@ -652,7 +725,7 @@ class TileMap:
                 for new_position in [(0, -1), (0, 1), (-1, 0), (1, 0)]:  # Adjacent squares
                     neighbor = (current_center[0] + new_position[0], current_center[1] + new_position[1])
                     if neighbor not in closed_list:
-                        if self.in_bounds(neighbor, walkable_only):
+                        if self.in_bounds(neighbor, walkable_only, need_los):
                             open_list.add(neighbor)
         return closed_list
 
@@ -661,7 +734,7 @@ class TileMap:
         if len(line) > length:
             return False
         for tile in line:
-            if not self.in_bounds(tile, True):
+            if not self.in_bounds(tile, False, True):
                 return False
         return True
 
@@ -843,7 +916,7 @@ class TileMap:
         if self.selected_character is not None:
             self.selected_character = self.selected_character.set_selected(False)
         for c in self.entity_list:
-            c.start_of_turn_update()
+            c.start_of_round_update()
         self.interface.set_button_active("end turn", True)
         self.remove_entities()
 
@@ -852,6 +925,6 @@ class TileMap:
         if self.selected_character is not None:
             self.selected_character = self.selected_character.set_selected(False)
         for c in self.entity_list:
-            c.end_of_turn_update()
+            c.end_of_round_update()
         self.ai_manager.start_ai_turn()
         self.remove_entities()

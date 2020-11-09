@@ -3,12 +3,21 @@ import entity
 import tilemap
 import user_interface
 import math
+from random import randint
 import skill_handler
+from skill_handler import SkillKeys
 from dialogue import draw_shadowed_text
 
 
-class Character(entity.Entity):
+class CharacterKeys:
+    name = "name"
+    team = "team"
+    health = "health"
+    movement = "movement"
+    skills = "skills"
 
+
+class Character(entity.Entity):
     def __init__(self, position, current_map, entity_data):
         super().__init__(position, entity_data)
         self.current_map = current_map
@@ -31,13 +40,15 @@ class Character(entity.Entity):
         self.status_effects = []
 
         # attributes of this character
-        self.name = entity_data["name"]
-        self.team = entity_data["team"]
-        self.max_health = entity_data["health"]
+        self.name = entity_data[CharacterKeys.name]
+        self.team = entity_data[CharacterKeys.team]
+        self.max_health = entity_data[CharacterKeys.health]
         self.health = self.max_health
-        self.movement = entity_data["movement"]
+        self.max_mana = 100
+        self.mana = self.max_mana
 
         # create health bar image
+        # TODO: fewer magic numbers
         self.health_height = math.floor(self.health / 10 + 1) * 12
         self.health_bar = pygame.Surface((128, self.health_height))
         self.health_bar.set_colorkey(pygame.Color("black"))
@@ -61,14 +72,28 @@ class Character(entity.Entity):
         self.skill_interface.set_active(False)
         self.selected_skill = None
         self.skill_interface.add_button((0.05, 0.8, 0.1, 0.05), self.name, "name", False)
-        for skill_data in entity_data["skills"]:
-            self.add_skill(skill_handler.Skill(skill_data, self))
+        for skill_data in entity_data[CharacterKeys.skills]:
+            self.add_skill(skill_handler.skill_list[skill_data[SkillKeys.code]](skill_data, self))
+
+    def get_data(self, key):
+        data = self.data[key]
+        for effect in self.status_effects:
+            data += effect.on_check_statistic(key)
+        return data
 
     def get_z(self):
         return self.visual_position[0] + self.visual_position[1] + 0.001
 
     def get_render_pos(self):
         return self.visual_position
+
+    def get_height(self, camera=True):
+        tile_pos = [round(self.visual_position[0]), round(self.visual_position[1])]
+        tile_height = self.current_map.get_tile_path(tile_pos)[tilemap.TileKeys.tiles][0][tilemap.TileKeys.height]
+        height = self.height + tile_height
+        if camera:
+            height *= tilemap.Camera.zoom
+        return height
 
     def update(self, deltatime):
         # animate along path if path is not empty
@@ -107,18 +132,28 @@ class Character(entity.Entity):
         if masks is not None and len(masks) > 0:
             masked_image = self.appearance.copy()
             for m in masks:
+                # cut out portions of the character that are overlapped by terrain tiles
                 offset = (m.position[0] - self.visual_position[0], m.position[1] - self.visual_position[1])
                 offset = tilemap.path_to_screen(offset, False)
-                masked_image.blit(m.image, (offset[0], offset[1] + self.height - m.height))
-            screen.blit(masked_image, (screen_pos[0], screen_pos[1] - self.height))
+                masked_image.blit(m.image, (offset[0], offset[1] + self.get_height(False) - m.height))
+            self.render_with_zoom(masked_image, screen, (screen_pos[0], screen_pos[1] - self.get_height()))
         else:
-            screen.blit(self.appearance, (screen_pos[0], screen_pos[1] - self.height))
+            self.render_with_zoom(self.appearance, screen, (screen_pos[0], screen_pos[1] - self.get_height()))
+
+    def render_with_zoom(self, image, dest, dest_pos):
+        zoomed = pygame.transform.scale(
+            image,
+            (round(self.appearance.get_width() * tilemap.Camera.zoom),
+             round(self.appearance.get_height() * tilemap.Camera.zoom)),
+        )
+        dest.blit(zoomed, (dest_pos[0], dest_pos[1]))
 
     def second_render(self, screen):
         screen_pos = tilemap.path_to_screen(self.visual_position)
-        screen.blit(self.health_bar, (screen_pos[0], screen_pos[1] - self.height - self.health_height))
+        height = self.get_height()
+        screen.blit(self.health_bar, (screen_pos[0], screen_pos[1] - height - self.health_height))
         if self.chance_image_active:
-            screen.blit(self.chance_image, (screen_pos[0] + tilemap.tile_extent[0], screen_pos[1] - self.height))
+            screen.blit(self.chance_image, (screen_pos[0] + tilemap.tile_extent[0], screen_pos[1] - height))
         self.skill_interface.render(screen)
 
     def notify(self, event):
@@ -147,8 +182,13 @@ class Character(entity.Entity):
 
     def add_skill(self, skill):
         self.skills.append(skill)
-        self.skill_interface.add_button((0.15 * len(self.skills), 0.9, 0.1, 0.05),
-                                        skill.get_data("name"), len(self.skills) - 1, True, skill.get_data("desc"))
+        self.skill_interface.add_button(
+            (0.15 * len(self.skills), 0.9, 0.1, 0.05),
+            skill.get_data(SkillKeys.name),
+            len(self.skills) - 1,
+            True,
+            skill.get_data(SkillKeys.description)
+        )
 
     def get_selected_skill(self):
         if self.ally:
@@ -159,14 +199,30 @@ class Character(entity.Entity):
     def has_ai(self):
         return False
 
-    def start_of_turn_update(self):
+    def start_of_round_update(self):
         self.has_move = True
         self.has_action = True
         self.accepting_input = self.ally
+        for effect in self.status_effects:
+            effect.on_start_turn()
+        self.effect_cleanup()
 
-    def end_of_turn_update(self):
+    def end_of_round_update(self):
         self.accepting_input = False
         self.chance_image_active = False
+        for effect in self.status_effects:
+            effect.on_end_turn()
+        self.effect_cleanup()
+
+    def effect_cleanup(self):
+        found = True
+        while found:
+            found = False
+            for i, o in enumerate(self.status_effects):
+                if o.delete:
+                    del self.status_effects[i]
+                    found = True
+                    break
 
     def commit_move(self, path):
         if self.has_move and len(path) > 1:
@@ -207,8 +263,15 @@ class Character(entity.Entity):
             return self.selected_skill.exec_skill(tile_pos)
         return False
 
-    def attack_with(self, skill):
-        skill.use_on_entity(self)
+    def roll_to_hit(self, accuracy):
+        if randint(0, 99) < accuracy:
+            return True
+        return False
+
+    def roll_to_crit(self, crit_chance):
+        if randint(0, 99) < crit_chance:
+            return True
+        return False
 
     def damage(self, amount):
         self.health -= amount
@@ -219,6 +282,13 @@ class Character(entity.Entity):
         for col in range(self.max_health - 1, self.health - 1, -1):
             row = math.floor(col / 10)
             pygame.draw.rect(self.health_bar, pygame.Color("gray"), (col * 12 - row * 120, row * 12, 10, 10))
+
+    def add_status_effect(self, effect):
+        for effect in self.status_effects:
+            if not effect.on_add_status_effect(effect):
+                return False
+        self.status_effects.append(effect)
+        return True
 
     def is_moving(self):
         return len(self.path) > 0
@@ -244,7 +314,7 @@ class AICharacter(Character):
     def ai_move(self):
         # get all possible move locations
 
-        all_moves = self.current_map.find_all_paths(self.position, self.movement)
+        all_moves = self.current_map.find_all_paths(self.position, self.get_data(CharacterKeys.movement))
         closest_target_distance = 99999
         closest_target = None
         for c in self.current_map.character_list:
@@ -267,7 +337,7 @@ class AICharacter(Character):
                 best_score = move_score
                 best_move = move
 
-        self.commit_move(self.current_map.find_path(self.position, best_move, self.movement))
+        self.commit_move(self.current_map.find_path(self.position, best_move, self.get_data(CharacterKeys.movement)))
 
     def finish_move(self):
         # use action
@@ -283,10 +353,14 @@ class AICharacter(Character):
 
         self.manager.next_actor(self)
 
-    def end_of_turn_update(self):
+    def end_of_round_update(self):
         self.AI_active = True
+        for effect in self.status_effects:
+            effect.on_start_turn()
 
-    def start_of_turn_update(self):
+    def start_of_round_update(self):
         self.AI_active = False
         self.has_move = True
         self.has_action = True
+        for effect in self.status_effects:
+            effect.on_end_turn()

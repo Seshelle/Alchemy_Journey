@@ -1,5 +1,6 @@
 {
 	"scene":"Tutorial",
+	"map file":"data/tutorial_map.json",
 	"tile sheet":"images/basic_ground_tiles.png",
 	"sheet col":8,
 	"sheet row":7,
@@ -25,9 +26,7 @@
 			"skills":[
 				{
 					"name":"Stab",
-					"display":"default",
-					"targeting":"default",
-					"effect":"default",
+					"code":"Default",
 					"desc":"Stabs a dude.",
 					"range":1.5,
 					"area":0,
@@ -53,9 +52,7 @@
 			"skills":[
 				{
 					"name":"Stab",
-					"display":"default",
-					"targeting":"default",
-					"effect":"default",
+					"code":"Default",
 					"desc":"Stabs a dude.",
 					"range":1.5,
 					"area":0,
@@ -81,9 +78,7 @@
 			"skills":[
 				{
 					"name":"Stab",
-					"display":"default",
-					"targeting":"default",
-					"effect":"default",
+					"code":"Default",
 					"desc":"Stabs a dude.",
 					"range":1.5,
 					"area":0,

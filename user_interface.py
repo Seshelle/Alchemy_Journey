@@ -4,6 +4,38 @@ import alchemy_settings as a_settings
 from dialogue import draw_shadowed_text
 
 
+def get_text_input(screen):
+    user_input = ""
+    input_rect = (a_settings.display_width / 3, a_settings.display_height / 3,
+                  a_settings.display_width / 3, a_settings.display_height / 3)
+    input_border = (a_settings.display_width / 4, a_settings.display_height / 4,
+                    a_settings.display_width / 2, a_settings.display_height / 2)
+    font = pygame.font.SysFont(None, 48)
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_BACKSPACE:
+                    user_input = user_input[:-1]
+                elif event.key == pygame.K_RETURN:
+                    return user_input
+                elif event.key == pygame.K_ESCAPE:
+                    return None
+                elif isinstance(event.unicode, str):
+                    user_input += event.unicode
+        pygame.draw.rect(screen, pygame.Color("blue"), input_border)
+        pygame.draw.rect(screen, pygame.Color("black"), input_rect)
+        draw_shadowed_text(
+            screen,
+            user_input,
+            pygame.Color("white"),
+            (a_settings.display_width / 3, a_settings.display_height / 3,
+             a_settings.display_width / 3, a_settings.display_height / 3),
+            font,
+            True
+        )
+        pygame.display.update()
+
+
 class UIButton:
     def __init__(self, rect, text, button_id, is_button=True, hover_text=None):
         self.button_id = button_id

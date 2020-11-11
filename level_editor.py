@@ -2,12 +2,14 @@ import pygame
 import tilemap
 from tilemap import TileKeys
 import json
+import user_interface
 
 
-class LevelEditor(tilemap.TileMap):
+class LevelEditor(tilemap.CombatMap):
     def __init__(self, filename):
         super().__init__(filename)
         self.scene = None
+        self.has_scene = False
         self.interface.set_button_active("end turn", False)
         self.interface.add_button((0.9, 0.95, 0.15, 0.05), "Save", "save")
         self.chosen_tile = 0
@@ -49,8 +51,18 @@ class LevelEditor(tilemap.TileMap):
         button_pressed = self.interface.notify(event)
         if button_pressed is not None:
             if button_pressed == "save":
-                with open("data/tutorial_map.json", 'w') as map_file:
-                    json.dump(self.tile_list, map_file, separators=(',', ':'))
+                filename = user_interface.get_text_input(pygame.display.get_surface())
+                if filename is not None:
+                    with open("data/" + filename + ".json", 'w') as map_file:
+                        json.dump(self.tile_list, map_file, separators=(',', ':'))
+            elif button_pressed == "load":
+                filename = user_interface.get_text_input(pygame.display.get_surface())
+                if filename is not None:
+                    with open("data/" + filename + ".json", 'r') as map_file:
+                        map_data = json.load(map_file)
+                        with open(map_data["map file"], 'r') as map_file:
+                            self.tile_list = json.load(map_file)
+                        self.create_background()
             return
 
         if event.type == pygame.MOUSEBUTTONDOWN:

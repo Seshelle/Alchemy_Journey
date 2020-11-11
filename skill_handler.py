@@ -2,6 +2,7 @@ from random import randint
 import entity
 from status_effects import EffectKeys
 from status_effects import effect_list
+import tilemap
 
 
 class SkillKeys:
@@ -44,12 +45,12 @@ class Skill:
             return True
         return False
 
-    def display(self, tile_pos):
+    def display_targets(self, tile_pos):
         if self.get_data(SkillKeys.area) > 0:
             if not self.current_map.in_bounds(tile_pos, True) or \
                     not self.current_map.line_of_sight(self.user.position, tile_pos, self.get_data(SkillKeys.range)):
                 return set()
-            attacked_tiles = self.current_map.make_radius(tile_pos, self.get_data(SkillKeys.area), True)
+            attacked_tiles = self.current_map.find_all_paths(tile_pos, self.get_data(SkillKeys.area), True)
             return attacked_tiles
         else:
             potential_targets = set()
@@ -60,11 +61,21 @@ class Skill:
                     e.display_hit(self)
             return potential_targets
 
+    def display_range(self):
+        tiles_in_range = self.current_map.find_all_paths(self.user.position, self.get_data(SkillKeys.range), True)
+        tiles_to_remove = []
+        for tile in tiles_in_range:
+            if not tilemap.distance_between(self.user.position, tile) > self.get_data(SkillKeys.range) - 1.5:
+                tiles_to_remove.append(tile)
+        for tile in tiles_to_remove:
+            tiles_in_range.remove(tile)
+        return tiles_in_range
+
     def target(self, tile_pos):
         if not self.current_map.in_bounds(tile_pos, True) or \
                 not self.current_map.line_of_sight(self.user.position, tile_pos, self.get_data(SkillKeys.range)):
             return []
-        attacked_tiles = self.current_map.make_radius(tile_pos, self.get_data(SkillKeys.area), True)
+        attacked_tiles = self.current_map.find_all_paths(tile_pos, self.get_data(SkillKeys.area), True)
         targets = self.current_map.get_characters_in_set(attacked_tiles)
         return targets
 
@@ -109,7 +120,7 @@ class DelayedTrigger(Skill):
         if self.user.has_action:
             current_map = self.user.current_map
             if current_map.in_bounds(tile_pos, True):
-                entity_data = {"appearance": "images/tile040.png", "height": 0}
+                entity_data = {"appearance": "images/tile040.png", "height": 1.5}
                 current_map.add_entity(entity.DelayedSkill(
                     tile_pos,
                     entity_data,

@@ -22,7 +22,8 @@ class MainMenu(GameMode):
         self.interface = user_interface.UserInterface()
         self.interface.add_button((0.5, 0.35, 0.2, 0.1), "Map", "map")
         self.interface.add_button((0.5, 0.5, 0.2, 0.1), "Editor", "edit")
-        self.interface.add_button((0.5, 0.65, 0.2, 0.1), "Quit", "quit")
+        self.interface.add_button((0.5, 0.65, 0.2, 0.1), "Hub", "hub")
+        self.interface.add_button((0.5, 0.8, 0.2, 0.1), "Quit", "quit")
 
     def update(self, deltatime):
         self.screen.fill((0, 0, 0))
@@ -34,9 +35,11 @@ class MainMenu(GameMode):
         if button_pressed is not None:
             if button_pressed == "map":
                 self.new_mode = MapScene(self.screen, "data/test_map_scene.json")
-            if button_pressed == "edit":
+            elif button_pressed == "edit":
                 self.new_mode = Editor(self.screen)
-            if button_pressed == "quit":
+            elif button_pressed == "hub":
+                self.new_mode = HubScene(self.screen)
+            elif button_pressed == "quit":
                 pass
 
 
@@ -67,7 +70,7 @@ class MapScene(GameMode):
         self.interface = user_interface.UserInterface()
         self.interface.add_button((0.9, 0.05, 0.1, 0.05), "Menu", "quit")
 
-        self.current_map = tilemap.TileMap(filename)
+        self.current_map = tilemap.CombatMap(filename)
 
     def update(self, deltatime):
         self.current_map.update(deltatime, self.screen)
@@ -94,3 +97,24 @@ class DialogueScene(GameMode):
 
     def notify(self, event):
         self.dialogue.notify(event)
+
+
+class HubScene(GameMode):
+    def __init__(self, screen):
+        super().__init__(screen)
+
+        self.interface = user_interface.UserInterface()
+        self.interface.add_button((0.9, 0.05, 0.1, 0.05), "Menu", "quit")
+        self.current_map = tilemap.FreeMoveMap("data/hub_test.json")
+
+    def update(self, deltatime):
+        self.current_map.update(deltatime, self.screen)
+        self.interface.render(self.screen)
+
+    def notify(self, event):
+        button_pressed = self.interface.notify(event)
+        if button_pressed is not None:
+            if button_pressed == "quit":
+                self.new_mode = MainMenu(self.screen)
+        else:
+            self.current_map.notify(event)

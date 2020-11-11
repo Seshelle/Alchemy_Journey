@@ -19,7 +19,7 @@ class CharacterKeys:
 
 class Character(entity.Entity):
     def __init__(self, position, current_map, entity_data):
-        super().__init__(position, entity_data)
+        super().__init__(position, current_map, entity_data)
         self.current_map = current_map
         # visual position is where it is rendered, like when moving
         self.visual_position = [position[0], position[1]]
@@ -87,14 +87,6 @@ class Character(entity.Entity):
     def get_render_pos(self):
         return self.visual_position
 
-    def get_height(self, camera=True):
-        tile_pos = [round(self.visual_position[0]), round(self.visual_position[1])]
-        tile_height = self.current_map.get_tile_path(tile_pos)[tilemap.TileKeys.tiles][0][tilemap.TileKeys.height]
-        height = self.height + tile_height
-        if camera:
-            height *= tilemap.Camera.zoom
-        return height
-
     def update(self, deltatime):
         # animate along path if path is not empty
         if len(self.path) > 0:
@@ -140,14 +132,6 @@ class Character(entity.Entity):
         else:
             self.render_with_zoom(self.appearance, screen, (screen_pos[0], screen_pos[1] - self.get_height()))
 
-    def render_with_zoom(self, image, dest, dest_pos):
-        zoomed = pygame.transform.scale(
-            image,
-            (round(self.appearance.get_width() * tilemap.Camera.zoom),
-             round(self.appearance.get_height() * tilemap.Camera.zoom)),
-        )
-        dest.blit(zoomed, (dest_pos[0], dest_pos[1]))
-
     def second_render(self, screen):
         screen_pos = tilemap.path_to_screen(self.visual_position)
         height = self.get_height()
@@ -161,7 +145,7 @@ class Character(entity.Entity):
             skill_id = self.skill_interface.notify(event)
             if skill_id is not None:
                 self.selected_skill = self.skills[skill_id]
-                self.current_map.display_skill(self.selected_skill)
+                self.current_map.display_skill_info(self.selected_skill, True)
                 return True
         return False
 
@@ -253,6 +237,9 @@ class Character(entity.Entity):
         self.chance_image_active = True
         draw_shadowed_text(self.chance_image, str(hit_chance) + "%", pygame.Color("white"),
                            (0, 0, tilemap.tile_extent[0], tilemap.tile_extent[1]), self.font)
+
+    def reset_display(self):
+        self.chance_image_active = False
 
     def clear_hit(self):
         self.chance_image_active = False

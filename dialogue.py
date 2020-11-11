@@ -14,7 +14,7 @@ def draw_text(surface, text, color, rect, font, aa=False, bkg=None):
         i = 1
 
         # determine if the row of text will be outside our area
-        if y + font_height > rect[3]:
+        if y + font_height > rect[1] + rect[3]:
             break
 
         # determine maximum width of line

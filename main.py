@@ -14,7 +14,6 @@ clock = pygame.time.Clock()
 runtime = 0
 crashed = False
 debug = False
-super_debug = False
 
 # set up fonts
 basicFont = pygame.font.SysFont(None, 36)
@@ -35,8 +34,7 @@ while not crashed:
                     interact(local=locals())
             if event.key == pygame.K_ESCAPE:
                 crashed = True
-        if not super_debug:
-            game_mode.notify(event)
+        game_mode.notify(event)
 
     # run upkeep and render for each object
     deltatime = pygame.time.get_ticks() - runtime

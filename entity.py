@@ -1,5 +1,6 @@
 import pygame
 import tilemap
+import dialogue
 
 
 class Entity:
@@ -76,6 +77,58 @@ class FreeMover(Entity):
     def __init__(self, position, current_map, entity_data):
         super().__init__(position, current_map, entity_data)
         self.move_speed = 0.002
+
+
+class InteractiveEntity(Entity):
+    def __init__(self, position, current_map, entity_data):
+        super().__init__(position, current_map, entity_data)
+        message = entity_data["message"]
+        font = pygame.font.SysFont(None, 36)
+        message_size = font.size(message)
+        print(message_size)
+        self.message_image = pygame.Surface((message_size[0], message_size[1])).convert()
+        self.message_image.set_colorkey(pygame.Color("black"))
+        dialogue.draw_shadowed_text(
+            self.message_image,
+            message,
+            pygame.Color("white"),
+            (0, 0, message_size[0], message_size[1]),
+            font,
+            True
+        )
+        self.interaction_range = 1
+        self.message_active = False
+        self.interaction_active = False
+
+        self.dialogue = None
+        if "dialogue" in entity_data.keys():
+            self.dialogue = dialogue.Dialogue(entity_data["dialogue"], False)
+
+    def active_when_adjacent(self, player_pos):
+        self.interaction_active = abs(player_pos[0] - self.position[0]) <= self.interaction_range and \
+                                  abs(player_pos[1] - self.position[1]) <= self.interaction_range
+        self.message_active = self.interaction_active
+
+    def interact(self):
+        if self.interaction_active and self.dialogue is not None:
+            self.dialogue.set_active(True)
+            self.message_active = False
+            return True
+        return False
+
+    def notify(self, event):
+        self.dialogue.notify(event)
+        if not self.dialogue.active:
+            self.current_map.return_control()
+
+    def render(self, screen, masks=None):
+        super().render(screen, masks)
+        if self.message_active:
+            location = tilemap.path_to_screen(self.get_render_pos())
+            screen.blit(self.message_image, (location[0], location[1] - tilemap.tile_extent[1] * 2))
+
+    def second_render(self, screen):
+        self.dialogue.render(screen)
 
 
 class DelayedSkill(Entity):

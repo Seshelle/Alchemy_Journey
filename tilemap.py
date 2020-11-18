@@ -77,7 +77,7 @@ def screen_to_path(screen_xy):
 
 
 def path_to_world(path_xy):
-    return map_to_world(path_to_map(path_xy))
+    return path_to_screen(path_xy, False)
 
 
 def map_to_world(map_xy):
@@ -174,22 +174,28 @@ class Mask:
         self.image = image
 
 
+class TintColors:
+    green = 2
+    yellow = 1
+    red = 0
+
+
 class TileMap:
     def __init__(self, filename):
         f = open(filename)
         map_data = json.load(f)
         f.close()
 
-        self.map_width = map_data["map width"]
-        self.map_height = map_data["map height"]
-        self.border_width = map_data["border width"]
-        self.border_height = map_data["border height"]
-        Camera.pos[0] = map_data["camera x"]
-        Camera.pos[1] = map_data["camera y"]
-        self.background_offset = (-self.border_width * tile_extent[0] * 2, -self.border_height * tile_extent[1])
-        self.background = pygame.Surface([(self.map_width + self.border_width * 2 + 1) * tile_extent[0] * 2,
-                                          (self.map_height + self.border_height * 2 + 1) * tile_extent[1]]).convert()
-        self.bg_cutout = None
+        self.map_width = 0
+        self.map_height = 0
+        self.border_width = 0
+        self.border_height = 0
+        Camera.pos[0] = 0
+        Camera.pos[1] = 0
+        self.background_offset = (0, 0)
+        self.background = pygame.Surface((1, 1))
+        self.setup_background(map_data)
+
         self.zoomed_bg = None
         self.interface_layer = pygame.Surface([a_settings.display_width, a_settings.display_height]).convert()
         sheet = pygame.image.load(map_data["tile sheet"]).convert()
@@ -244,7 +250,7 @@ class TileMap:
                 # mask over the entity's image where an object is overlapping it
                 tile_pos = (round(render_pos[0]), round(render_pos[1]))
                 masks = []
-                for offset in [(0, 1), (1, 0), (1, 1)]:
+                for offset in [(0, 1), (1, 0), (1, 1), (1, -1), (-1, 1)]:
                     new_tile = (tile_pos[0] + offset[0], tile_pos[1] + offset[1])
                     if self.in_bounds(new_tile, False):
                         map_tile = path_to_map(new_tile)
@@ -264,6 +270,17 @@ class TileMap:
                 new_character = entity.Entity([c["spawn x"], c["spawn y"]], self, c)
                 self.entity_list.append(new_character)
         self.z_order_sort_entities()
+
+    def setup_background(self, map_data):
+        self.map_width = map_data["map width"]
+        self.map_height = map_data["map height"]
+        self.border_width = map_data["border width"]
+        self.border_height = map_data["border height"]
+        Camera.pos[0] = map_data["camera x"]
+        Camera.pos[1] = map_data["camera y"]
+        self.background_offset = (-self.border_width * tile_extent[0] * 2, -self.border_height * tile_extent[1])
+        self.background = pygame.Surface([(self.map_width + self.border_width * 2 + 1) * tile_extent[0] * 2,
+                                          (self.map_height + self.border_height * 2 + 1) * tile_extent[1]]).convert()
 
     def create_background(self):
         # create a grayed out border image
@@ -290,8 +307,8 @@ class TileMap:
             self.background,
             (round(self.background.get_width() * Camera.zoom), round(self.background.get_height() * Camera.zoom))
         )
+        self.zoomed_bg.convert()
         self.clean_bg = self.zoomed_bg.copy()
-        self.bg_cutout = None
 
     def zoom_image(self, image):
         if Camera.zoom != 1:
@@ -299,6 +316,7 @@ class TileMap:
                 image,
                 (round(image.get_width() * Camera.zoom), round(image.get_height() * Camera.zoom))
             )
+            zoomed.convert()
             return zoomed
         return image
 
@@ -375,16 +393,9 @@ class CombatMap(TileMap):
             self.scene = None
             self.has_scene = False
 
-        # create additional layers on top of bg
-        self.tint_layer = pygame.Surface([(self.map_width + 1) * tile_extent[0] * 2,
-                                          (self.map_height + 1) * tile_extent[1]]).convert()
-        self.zoomed_tint_layer = None
-        self.tint_rect = (0, 0, 0, 0)
-        self.tint_layer.fill((0, 0, 0))
-        self.tint_layer.set_colorkey((0, 0, 0))
-        self.tint_layer.set_alpha(75)
-        self.tint_layer_rect = (0, 0, 0, 0)
+        # keep track of when to update display
         self.tint_layer_update = False
+        self.skill_display_update = False
 
         # initialize other images
         self.selection_square = pygame.image.load("images/selection_square.png").convert()
@@ -395,13 +406,31 @@ class CombatMap(TileMap):
         self.path_arrow_horizontal.set_colorkey(pygame.Color("black"))
         self.path_arrow_vertical = pygame.image.load("images/path_arrow_vertical.png").convert()
         self.path_arrow_vertical.set_colorkey(pygame.Color("black"))
-        self.red_tile_tint = pygame.image.load("images/tintable_square.png").convert_alpha()
-        self.red_tile_tint.set_colorkey(pygame.Color("black"))
-        self.green_tile_tint = self.red_tile_tint.copy()
-        self.yellow_tile_tint = self.red_tile_tint.copy()
-        self.red_tile_tint.fill((255, 0, 0), special_flags=pygame.BLEND_RGB_MULT)
-        self.green_tile_tint.fill((0, 255, 0), special_flags=pygame.BLEND_RGB_MULT)
-        self.yellow_tile_tint.fill((255, 255, 0), special_flags=pygame.BLEND_RGB_MULT)
+
+        # create tile tint images
+        self.white_tile_tint = pygame.image.load("images/tintable_square.png").convert_alpha()
+        red_tile_tint = self.white_tile_tint.copy()
+        green_tile_tint = self.white_tile_tint.copy()
+        yellow_tile_tint = self.white_tile_tint.copy()
+        red_tile_tint.fill((255, 0, 0, 75), special_flags=pygame.BLEND_RGBA_MULT)
+        green_tile_tint.fill((0, 255, 0, 75), special_flags=pygame.BLEND_RGBA_MULT)
+        yellow_tile_tint.fill((255, 255, 0, 75), special_flags=pygame.BLEND_RGBA_MULT)
+        self.tint_images = {
+            TintColors.red: red_tile_tint,
+            TintColors.yellow: yellow_tile_tint,
+            TintColors.green: green_tile_tint
+        }
+        self.tinted_tiles = {
+            TintColors.red: set(),
+            TintColors.yellow: set(),
+            TintColors.green: set()
+        }
+        self.old_tinted_tiles = {
+            TintColors.red: set(),
+            TintColors.yellow: set(),
+            TintColors.green: set()
+        }
+        self.cached_skill = None
 
         # objects to display
         self.path = []
@@ -409,17 +438,10 @@ class CombatMap(TileMap):
         self.last_path_test = (-99, -199)
         self.selected_character = None
         self.character_list = []
-        self.red_tinted_tiles = set()
-        self.green_tinted_tiles = set()
-        self.yellow_tinted_tiles = set()
         self.interface = user_interface.UserInterface()
         self.interface.add_button((0.9, 0.95, 0.15, 0.05), "End Turn", "end turn")
         self.controlled_characters = []
         self.ai_manager = ai_manager.AIManager(self)
-
-        # timers
-        self.time_since_mouse_change = 0
-        self.skill_display_update = False
 
         self.populate_map(filename)
 
@@ -436,13 +458,10 @@ class CombatMap(TileMap):
             keys = pygame.key.get_pressed()
             if keys[pygame.K_w]:
                 Camera.pos[1] += deltatime * Camera.speed
-
             if keys[pygame.K_s]:
                 Camera.pos[1] -= deltatime * Camera.speed
-
             if keys[pygame.K_a]:
                 Camera.pos[0] += deltatime * Camera.speed
-
             if keys[pygame.K_d]:
                 Camera.pos[0] -= deltatime * Camera.speed
 
@@ -465,11 +484,8 @@ class CombatMap(TileMap):
         mouse_change = False
         if screen_to_path(pygame.mouse.get_pos()) != self.mouse_coords:
             self.mouse_coords = screen_to_path(pygame.mouse.get_pos())
-            self.time_since_mouse_change = 0
             mouse_change = True
             self.skill_display_update = True
-        else:
-            self.time_since_mouse_change += deltatime
 
         self.draw_movement_path(screen, mouse_change)
         if self.selected_character is not None:
@@ -493,54 +509,60 @@ class CombatMap(TileMap):
             self.scene.second_render(screen)
 
     def apply_tint_layer_to_bg(self, real_offset):
-        # create new tint layer if it has changed, then apply it to the background
-        bottom_right = [-99999, -99999]
-        upper_left = [0, 0]
         if self.tint_layer_update:
             self.tint_layer_update = False
-            # remove previous tint by overwriting it with a stored piece of clean background
-            if self.bg_cutout is not None:
-                # TODO: Fix zoom bug here
-                self.zoomed_bg.blit(
-                    self.background,
-                    (self.tint_rect[0] - real_offset[0], self.tint_rect[1] - real_offset[1]),
-                    (self.tint_rect[0] - real_offset[0], self.tint_rect[1] - real_offset[1], self.tint_rect[2],
-                     self.tint_rect[3])
-                )
 
-            for tile in self.green_tinted_tiles:
-                tint_pos = path_to_world(tile)
-                upper_left = [min(upper_left[0], tint_pos[0]), min(upper_left[1], tint_pos[1])]
-                bottom_right = [max(bottom_right[0], tint_pos[0]), max(bottom_right[1], tint_pos[1])]
-                self.tint_layer.blit(self.green_tile_tint, tint_pos)
+            # get a list of all tiles that don't need an update
+            tiles_to_cache = set()
+            for color in self.tinted_tiles.keys():
+                # the tiles in both sets are tiles that don't need updating
+                tiles_to_cache = tiles_to_cache.union(self.tinted_tiles[color] & self.old_tinted_tiles[color])
+            # update tiles that have any differences between old and new sets
+            for color in self.tinted_tiles.keys():
+                for tile in self.old_tinted_tiles[color] ^ self.tinted_tiles[color]:
+                    tiles_to_cache.discard(tile)
 
-            for tile in self.yellow_tinted_tiles:
-                tint_pos = path_to_world(tile)
-                upper_left = [min(upper_left[0], tint_pos[0]), min(upper_left[1], tint_pos[1])]
-                bottom_right = [max(bottom_right[0], tint_pos[0]), max(bottom_right[1], tint_pos[1])]
-                self.tint_layer.blit(self.yellow_tile_tint, tint_pos)
+            # zoom_mask = self.zoom_image(self.tile_mask_image)
+            zoom_mask = self.zoom_image(self.white_tile_tint)
+            clean_surface = pygame.Surface(
+                (tile_extent[0] * 2 * Camera.zoom,
+                 tile_extent[1] * 2 * Camera.zoom)
+            ).convert()
+            clean_surface.fill((0, 0, 0, 0))
+            clean_surface.set_colorkey((0, 0, 0, 0))
 
-            for tile in self.red_tinted_tiles:
-                tint_pos = path_to_world(tile)
-                upper_left = [min(upper_left[0], tint_pos[0]), min(upper_left[1], tint_pos[1])]
-                bottom_right = [max(bottom_right[0], tint_pos[0]), max(bottom_right[1], tint_pos[1])]
-                self.tint_layer.blit(self.red_tile_tint, tint_pos)
+            tiles_to_clean = set()
+            for tile_set in self.old_tinted_tiles.values():
+                tiles_to_clean = tiles_to_clean.union(tile_set)
 
-            self.zoomed_tint_layer = self.zoom_image(self.tint_layer)
-            self.tint_rect = (
-                upper_left[0],
-                upper_left[1],
-                (bottom_right[0] + tile_extent[0] * 2) * Camera.zoom,
-                (bottom_right[1] + tile_extent[1] * 2) * Camera.zoom
-            )
-            # create a cutout of the background for removing the tint later
-            if len(self.red_tinted_tiles) + len(self.green_tinted_tiles) + len(self.yellow_tinted_tiles) > 0:
-                self.bg_cutout = pygame.Surface((self.tint_rect[2], self.tint_rect[3]))
-                self.bg_cutout.blit(self.zoomed_bg,
-                                    (self.tint_rect[0] + real_offset[0], self.tint_rect[1] + real_offset[1]))
-                self.zoomed_bg.blit(self.zoomed_tint_layer, (-real_offset[0], -real_offset[1]), self.tint_rect)
-            else:
-                self.bg_cutout = None
+            # remove tint from bg using original copy
+            for tile in tiles_to_clean:
+                if tile not in tiles_to_cache:
+                    tile_pos = path_to_world(tile)
+                    tile_offset = ((tile_pos[0] - self.background_offset[0]) * Camera.zoom,
+                                   (tile_pos[1] - self.background_offset[1]) * Camera.zoom)
+                    clean_surface.blit(zoom_mask, (0, 0))
+                    clean_surface.blit(
+                        self.clean_bg,
+                        (0, 0),
+                        (tile_offset[0], tile_offset[1],
+                         tile_extent[0] * 2 * Camera.zoom, tile_extent[1] * 2 * Camera.zoom),
+                        special_flags=pygame.BLEND_MULT
+                    )
+                    self.zoomed_bg.blit(clean_surface, tile_offset)
+
+            for tile_set in self.old_tinted_tiles.values():
+                tile_set.clear()
+
+            # after clearing old tiles, tint the bg tiles the proper color
+            for color in self.tinted_tiles.keys():
+                zoom_tint = self.zoom_image(self.tint_images[color])
+                for tile in self.tinted_tiles[color]:
+                    if tile not in tiles_to_cache:
+                        tint_pos = path_to_world(tile)
+                        tint_pos[0] = tint_pos[0] * Camera.zoom - real_offset[0]
+                        tint_pos[1] = tint_pos[1] * Camera.zoom - real_offset[1]
+                        self.zoomed_bg.blit(zoom_tint, tint_pos)
 
     def draw_movement_path(self, screen, mouse_change):
         zoom_selection = self.zoom_image(self.selection_square)
@@ -606,13 +628,17 @@ class CombatMap(TileMap):
 
     def display_skill_info(self, skill, force_update=False):
         if skill is not None:
-            if force_update or self.time_since_mouse_change > 40 and \
-                    skill.get_data("area") > 0 and self.skill_display_update:
+            if force_update or skill.get_data("area") > 0 and self.skill_display_update:
                 self.skill_display_update = False
                 # render the area that will be hit by an area skill
+                if skill != self.cached_skill or force_update:
+                    range_display = skill.display_range()
+                    self.cached_skill = skill
+                else:
+                    range_display = self.tinted_tiles[TintColors.yellow].copy()
                 self.clear_tinted_tiles()
-                self.red_tinted_tiles = skill.display_targets(self.mouse_coords)
-                self.yellow_tinted_tiles = skill.display_range()
+                self.tinted_tiles[TintColors.red] = skill.display_targets(self.mouse_coords)
+                self.tinted_tiles[TintColors.yellow] = range_display
 
     def notify(self, event):
         # map scene gets first dibs on consuming input
@@ -680,6 +706,7 @@ class CombatMap(TileMap):
                         self.selected_character.set_selected(True)
 
         elif event.type == pygame.KEYDOWN:
+            # cycle through controllable characters and focus on them
             if event.key == pygame.K_TAB:
                 self.clear_tinted_tiles()
                 if self.selected_character is None:
@@ -695,8 +722,10 @@ class CombatMap(TileMap):
                                 self.selected_character = self.controlled_characters[0].set_selected(True)
                                 break
                 self.move_camera_to_path(self.selected_character.position)
+            # focus camera on current selection
             elif event.key == pygame.K_SPACE and self.selected_character is not None:
                 self.move_camera_to_path(self.selected_character.position)
+            # zoom camera in and out
             elif event.key == pygame.K_UP or event.key == pygame.K_DOWN:
                 zoom_step = 0.05
                 zoom_min = 0.6
@@ -762,29 +791,27 @@ class CombatMap(TileMap):
         return spawn_pos
 
     def clear_tinted_tiles(self):
-        # TODO: clean background, maybe make another layer
-        for tile in self.red_tinted_tiles.union(self.green_tinted_tiles, self.yellow_tinted_tiles):
-            tile_pos = path_to_world(tile)
-            self.tint_layer.fill((0, 0, 0), (tile_pos[0], tile_pos[1], tile_extent[0] * 2, tile_extent[1] * 2))
-        self.red_tinted_tiles.clear()
-        self.green_tinted_tiles.clear()
-        self.yellow_tinted_tiles.clear()
+        has_tint = False
+        for tile_set in self.tinted_tiles.values():
+            if len(tile_set) > 0:
+                has_tint = True
+                break
+        if has_tint:
+            for color in self.tinted_tiles.keys():
+                self.old_tinted_tiles[color] = self.tinted_tiles[color].copy()
+        for tiles in self.tinted_tiles.values():
+            tiles.clear()
         self.tint_layer_update = True
 
         for c in self.character_list:
             c.reset_display()
 
-    def display_skill(self, skill):
-        self.clear_tinted_tiles()
-        self.red_tinted_tiles = skill.display_targets(self.mouse_coords)
-
     def display_movement(self, this_character):
         self.possible_paths = self.find_all_paths(this_character.position,
                                                   this_character.get_data(CharacterKeys.movement))
-        # self.last_path_test = character.position
         # show possible movement tiles for selected character
         self.clear_tinted_tiles()
-        self.green_tinted_tiles = self.possible_paths
+        self.tinted_tiles[TintColors.green] = self.possible_paths
         # dirty the mouse coordinates so there will be an immediate path update
         self.mouse_coords = (-1, -1)
 
@@ -821,13 +848,14 @@ class CombatMap(TileMap):
                 return False
         return True
 
-    def find_all_paths(self, start, max_length, projectile=False):
+    def find_all_paths(self, start, max_length, projectile=False, edges_only=False):
         # Create start node
         start_node = Node(None, tuple(start))
 
         # Initialize both open and closed list
         open_list = []
         closed_list = set()
+        edge_list = set()
 
         # Add the start node
         open_list.append(start_node)
@@ -844,10 +872,13 @@ class CombatMap(TileMap):
             open_list.pop(current_index)
             open_list_pos.discard(current_node.position)
             closed_list.add(current_node.position)
+            if edges_only:
+                edge_list.add(current_node.position)
 
             if current_node.g + 1 > max_length:
                 continue
 
+            valid_adjacent = 0
             for new_position in [(0, -1), (0, 1), (-1, 0), (1, 0),
                                  (-1, -1), (-1, 1), (1, -1), (1, 1)]:  # Adjacent squares
 
@@ -858,6 +889,7 @@ class CombatMap(TileMap):
 
                 # node is on the closed list
                 if node_position in closed_list:
+                    valid_adjacent += 1
                     continue
 
                 # Make sure tile is not blocked
@@ -889,6 +921,7 @@ class CombatMap(TileMap):
 
                 # node is already in the open list
                 if node_position in open_list_pos:
+                    valid_adjacent += 1
                     continue
 
                 # Create new node
@@ -898,6 +931,11 @@ class CombatMap(TileMap):
                 # Append
                 open_list.append(new_node)
                 open_list_pos.add(new_node.position)
+                valid_adjacent += 1
+            if edges_only and valid_adjacent == 8:
+                edge_list.discard(current_node.position)
+        if edges_only:
+            return edge_list
         return closed_list
 
     def find_path(self, start, end, max_length):
@@ -1023,60 +1061,96 @@ class CombatMap(TileMap):
 class FreeMoveMap(TileMap):
     def __init__(self, filename):
         super().__init__(filename)
+        self.interactive_entities = []
         self.player = entity.FreeMover([0, 0], self, {"appearance": "images/tile041.png", "height": 1.5})
         self.add_entity(self.player)
+        self.add_entities(filename)
+        self.control_entity = None
 
     def update(self, deltatime, screen):
         super().update(deltatime, screen)
 
-        keys = pygame.key.get_pressed()
-        up = keys[pygame.K_w]
-        down = keys[pygame.K_s]
-        left = keys[pygame.K_a]
-        right = keys[pygame.K_d]
+        if self.control_entity is None:
+            keys = pygame.key.get_pressed()
+            up = keys[pygame.K_w]
+            down = keys[pygame.K_s]
+            left = keys[pygame.K_a]
+            right = keys[pygame.K_d]
 
-        move_keys = [up, down, left, right]
-        speed = deltatime * self.player.move_speed
-        # the following code allows the player to slide along walls instead of stopping
-        # it does this by checking a 45 degree angle from your current movement
-        if not self.try_move_player(move_keys, speed):
-            key_presses = []
-            # find which movement keys are pressed
-            for i in range(len(move_keys)):
-                if move_keys[i]:
-                    key_presses.append(i)
-            # if one key is pressed, try the move with one key added in a perpendicular direction
-            if len(key_presses) == 1:
-                if key_presses[0] <= 1:
-                    self.try_move_player([move_keys[0], move_keys[1], True, move_keys[3]], speed)
-                    self.try_move_player([move_keys[0], move_keys[1], move_keys[2], True], speed)
-                else:
+            move_keys = [up, down, left, right]
+            speed = deltatime * self.player.move_speed
+            # the following code allows the player to slide along walls instead of stopping
+            # it does this by checking a 45 degree angle from your current movement
+            if not self.try_move_player(move_keys, speed):
+                # try the move with one key added in a perpendicular direction
+                if not move_keys[0] and not move_keys[1]:
                     self.try_move_player([True, move_keys[1], move_keys[2], move_keys[3]], speed)
                     self.try_move_player([move_keys[0], True, move_keys[2], move_keys[3]], speed)
+                else:
+                    self.try_move_player([move_keys[0], move_keys[1], True, move_keys[3]], speed, True)
+                    self.try_move_player([move_keys[0], move_keys[1], move_keys[2], True], speed, True)
 
-        Camera.pos = path_to_screen(self.player.position, False)
-        Camera.pos[0] *= -1
-        Camera.pos[1] *= -1
-        Camera.pos[0] += a_settings.display_width / 2 - tile_extent[0] * 2
-        Camera.pos[1] += a_settings.display_height / 2 - tile_extent[1]
-        self.move_camera_in_bounds()
+            Camera.pos = path_to_world(self.player.position)
+            Camera.pos[0] *= -1
+            Camera.pos[1] *= -1
+            Camera.pos[0] += a_settings.display_width / 2 - tile_extent[0] * 2
+            Camera.pos[1] += a_settings.display_height / 2 - tile_extent[1]
+            self.move_camera_in_bounds()
 
-    def try_move_player(self, move_keys, speed):
-        move = self.create_move(move_keys, speed)
+            for e in self.interactive_entities:
+                e.active_when_adjacent(self.player.position)
+
+        for e in self.interactive_entities:
+            e.second_render(screen)
+
+        self.z_order_sort_entities()
+
+    def notify(self, event):
+        super().notify(event)
+        if self.control_entity is not None:
+            self.control_entity.notify(event)
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_e:
+                # try to interact with all active interactive entities
+                for e in self.interactive_entities:
+                    if e.interact():
+                        self.set_control_entity(e)
+                        break
+
+    def set_control_entity(self, controller):
+        self.control_entity = controller
+
+    def return_control(self):
+        self.control_entity = None
+
+    def add_entities(self, filename):
+        with open(filename) as f:
+            entity_data = json.load(f)
+            for c in entity_data["characters"]:
+                new_character = entity.InteractiveEntity([c["spawn x"], c["spawn y"]], self, c)
+                self.entity_list.append(new_character)
+                self.interactive_entities.append(new_character)
+        self.z_order_sort_entities()
+
+    def try_move_player(self, move_keys, speed, no_mult=False):
+        move = self.create_move(move_keys, speed, no_mult)
         if self.in_bounds(move, True):
             self.player.position = move
             return True
         return False
 
-    def create_move(self, move_keys, speed):
+    def create_move(self, move_keys, speed, no_mult):
         # up = 0, down = 1, left = 2, right = 3
         move = [self.player.position[0], self.player.position[1]]
+        vertical_speed_mult = 1.5
+        if no_mult:
+            vertical_speed_mult = 1
         if move_keys[0]:
-            move[0] -= speed
-            move[1] -= speed
+            move[0] -= speed * vertical_speed_mult
+            move[1] -= speed * vertical_speed_mult
         if move_keys[1]:
-            move[0] += speed
-            move[1] += speed
+            move[0] += speed * vertical_speed_mult
+            move[1] += speed * vertical_speed_mult
         if move_keys[2]:
             move[0] -= speed
             move[1] += speed

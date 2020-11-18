@@ -38,6 +38,12 @@ class StatusEffect:
     def on_miss(self, user):
         pass
 
+    def on_self_hit(self):
+        pass
+
+    def on_self_crit(self):
+        pass
+
     def on_start_turn(self):
         # if an effect has zero duration, it will end before the host's turn begins
         if self.age >= self.data["duration"]:

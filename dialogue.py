@@ -14,8 +14,8 @@ def draw_text(surface, text, color, rect, font, aa=False, bkg=None):
         i = 1
 
         # determine if the row of text will be outside our area
-        if y + font_height > rect[1] + rect[3]:
-            break
+        # if y + font_height > rect[1] + rect[3]:
+        #    break
 
         # determine maximum width of line
         while font.size(text[:i])[0] < rect[2] and i < len(text):
@@ -82,11 +82,14 @@ class Dialogue:
     def notify(self, event):
         if self.active and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             self.next_line()
+            print(self.active)
+            return self.active
 
     def set_active(self, active):
         self.active = active
         if active:
             self.break_message = None
+            self.next_line()
         else:
             self.break_message = "stopped"
 
@@ -103,7 +106,6 @@ class Dialogue:
             if "break" in line.keys():
                 self.break_message = line["break"]
                 self.active = False
-                self.current_line += 1
 
             if "text" in line.keys():
                 self.text = line["text"]

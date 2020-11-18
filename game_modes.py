@@ -2,6 +2,7 @@ import user_interface
 import tilemap
 import level_editor
 import dialogue
+import strategy_map
 
 
 class GameMode:
@@ -20,6 +21,7 @@ class MainMenu(GameMode):
     def __init__(self, screen):
         super().__init__(screen)
         self.interface = user_interface.UserInterface()
+        self.interface.add_button((0.5, 0.2, 0.2, 0.1), "Expedition", "expedition")
         self.interface.add_button((0.5, 0.35, 0.2, 0.1), "Map", "map")
         self.interface.add_button((0.5, 0.5, 0.2, 0.1), "Editor", "edit")
         self.interface.add_button((0.5, 0.65, 0.2, 0.1), "Hub", "hub")
@@ -33,7 +35,9 @@ class MainMenu(GameMode):
     def notify(self, event):
         button_pressed = self.interface.notify(event)
         if button_pressed is not None:
-            if button_pressed == "map":
+            if button_pressed == "expedition":
+                self.new_mode = ExpeditionScene(self.screen)
+            elif button_pressed == "map":
                 self.new_mode = MapScene(self.screen, "data/test_map_scene.json")
             elif button_pressed == "edit":
                 self.new_mode = Editor(self.screen)
@@ -48,7 +52,7 @@ class Editor(GameMode):
         super().__init__(screen)
         self.interface = user_interface.UserInterface()
         self.interface.add_button((0.9, 0.05, 0.1, 0.05), "Menu", "quit")
-        self.current_map = level_editor.LevelEditor("data/test_map_scene.json")
+        self.current_map = level_editor.LevelEditor("data/blank_scene.json")
 
     def update(self, deltatime):
         self.current_map.update(deltatime, self.screen)
@@ -105,7 +109,28 @@ class HubScene(GameMode):
 
         self.interface = user_interface.UserInterface()
         self.interface.add_button((0.9, 0.05, 0.1, 0.05), "Menu", "quit")
-        self.current_map = tilemap.FreeMoveMap("data/hub_test.json")
+        self.current_map = tilemap.FreeMoveMap("data/hub_scene.json")
+
+    def update(self, deltatime):
+        self.current_map.update(deltatime, self.screen)
+        self.interface.render(self.screen)
+
+    def notify(self, event):
+        button_pressed = self.interface.notify(event)
+        if button_pressed is not None:
+            if button_pressed == "quit":
+                self.new_mode = MainMenu(self.screen)
+        else:
+            self.current_map.notify(event)
+
+
+class ExpeditionScene(GameMode):
+    def __init__(self, screen):
+        super().__init__(screen)
+
+        self.interface = user_interface.UserInterface()
+        self.interface.add_button((0.9, 0.05, 0.1, 0.05), "Menu", "quit")
+        self.current_map = strategy_map.StrategyMap()
 
     def update(self, deltatime):
         self.current_map.update(deltatime, self.screen)

@@ -62,13 +62,7 @@ class Skill:
             return potential_targets
 
     def display_range(self):
-        tiles_in_range = self.current_map.find_all_paths(self.user.position, self.get_data(SkillKeys.range), True)
-        tiles_to_remove = []
-        for tile in tiles_in_range:
-            if not tilemap.distance_between(self.user.position, tile) > self.get_data(SkillKeys.range) - 1.5:
-                tiles_to_remove.append(tile)
-        for tile in tiles_to_remove:
-            tiles_in_range.remove(tile)
+        tiles_in_range = self.current_map.find_all_paths(self.user.position, self.get_data(SkillKeys.range), True, True)
         return tiles_in_range
 
     def target(self, tile_pos):

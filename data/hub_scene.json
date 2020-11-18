@@ -1,0 +1,24 @@
+{
+	"map file":"data/hub_map.json",
+	"tile sheet":"images/basic_ground_tiles.png",
+	"sheet col":8,
+	"sheet row":7,
+	"tile width":128,
+	"tile height":128,
+	"map width":25,
+	"map height":50,
+	"border width": 4,
+	"border height": 10,
+	"camera x":0,
+	"camera y": 0,
+	"characters":[
+		{
+			"spawn x":5,
+			"spawn y":0,
+			"appearance":"images/tile041.png",
+			"height":1.5,
+			"message":"E: TALK",
+			"dialogue":"data/dialogue_test.json"
+		}
+	]
+}

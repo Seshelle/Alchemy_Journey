@@ -11,7 +11,8 @@ class LevelEditor(tilemap.CombatMap):
         self.scene = None
         self.has_scene = False
         self.interface.set_button_active("end turn", False)
-        self.interface.add_button((0.9, 0.95, 0.15, 0.05), "Save", "save")
+        self.interface.add_button((0.9, 0.95, 0.1, 0.05), "Save", "save")
+        self.interface.add_button((0.75, 0.95, 0.1, 0.05), "Load", "load")
         self.chosen_tile = 0
         self.layer = 0
         self.chosen_height = 0
@@ -34,10 +35,10 @@ class LevelEditor(tilemap.CombatMap):
             self.edit_tile()
         if not self.walkable or not self.los:
             if not self.los:
-                tint = self.green_tile_tint
+                tint = self.tint_images[tilemap.TintColors.green]
                 attribute = TileKeys.line_of_sight
             else:
-                tint = self.red_tile_tint
+                tint = self.tint_images[tilemap.TintColors.red]
                 attribute = TileKeys.walkable
             tint_pos = tilemap.path_to_screen(self.mouse_coords)
             screen.blit(tint, tint_pos, special_flags=pygame.BLEND_ADD)
@@ -51,17 +52,15 @@ class LevelEditor(tilemap.CombatMap):
         button_pressed = self.interface.notify(event)
         if button_pressed is not None:
             if button_pressed == "save":
-                filename = user_interface.get_text_input(pygame.display.get_surface())
-                if filename is not None:
-                    with open("data/" + filename + ".json", 'w') as map_file:
-                        json.dump(self.tile_list, map_file, separators=(',', ':'))
+                self.save_map()
             elif button_pressed == "load":
                 filename = user_interface.get_text_input(pygame.display.get_surface())
                 if filename is not None:
-                    with open("data/" + filename + ".json", 'r') as map_file:
-                        map_data = json.load(map_file)
-                        with open(map_data["map file"], 'r') as map_file:
-                            self.tile_list = json.load(map_file)
+                    with open("data/" + filename + ".json", 'r') as scene_file:
+                        scene = json.load(scene_file)
+                        with open(scene["map file"]) as tiles:
+                            self.tile_list = json.load(tiles)
+                        self.setup_background(scene)
                         self.create_background()
             return
 
@@ -105,6 +104,12 @@ class LevelEditor(tilemap.CombatMap):
                 self.layer = 0
             elif event.key == pygame.K_2:
                 self.layer = 1
+
+    def save_map(self):
+        filename = user_interface.get_text_input(pygame.display.get_surface())
+        if filename is not None:
+            with open("data/" + filename + ".json", 'w') as map_file:
+                json.dump(self.tile_list, map_file, separators=(',', ':'))
 
     def edit_tile(self):
         mouse_pos = tilemap.screen_to_path(pygame.mouse.get_pos())

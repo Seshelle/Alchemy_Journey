@@ -71,7 +71,7 @@ class Character(entity.Entity):
         self.skill_interface = user_interface.UserInterface()
         self.skill_interface.set_active(False)
         self.selected_skill = None
-        self.skill_interface.add_button((0.05, 0.8, 0.1, 0.05), self.name, "name", False)
+        self.skill_interface.add_image((0.05, 0.8, 0.1, 0.05), self.name)
         for skill_data in entity_data[CharacterKeys.skills]:
             self.add_skill(skill_handler.skill_list[skill_data[SkillKeys.code]](skill_data, self))
 
@@ -252,11 +252,15 @@ class Character(entity.Entity):
 
     def roll_to_hit(self, accuracy):
         if randint(0, 99) < accuracy:
+            for effect in self.status_effects:
+                effect.on_self_hit()
             return True
         return False
 
     def roll_to_crit(self, crit_chance):
         if randint(0, 99) < crit_chance:
+            for effect in self.status_effects:
+                effect.on_self_crit()
             return True
         return False
 

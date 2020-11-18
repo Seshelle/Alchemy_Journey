@@ -1,11 +1,11 @@
 import pygame
-import tilemap
 import game_modes
 import alchemy_settings as a_settings
-import os
+from os import environ
 from code import interact
+import gc
 
-os.environ['SDL_VIDEO_CENTERED'] = '1'
+environ['SDL_VIDEO_CENTERED'] = '1'
 pygame.init()
 
 screen = pygame.display.set_mode((a_settings.display_width, a_settings.display_height))
@@ -17,7 +17,6 @@ debug = False
 
 # set up fonts
 basicFont = pygame.font.SysFont(None, 36)
-tile_extent = tilemap.tile_extent
 
 game_mode = game_modes.MainMenu(screen)
 while not crashed:
@@ -44,6 +43,7 @@ while not crashed:
     game_mode.update(deltatime)
     if game_mode.new_mode is not None:
         game_mode = game_mode.new_mode
+        gc.collect()
 
     if debug:
         text = basicFont.render(str(int(clock.get_fps())), True, pygame.Color("white"), pygame.Color("blue"))

@@ -1,0 +1,25 @@
+{
+	"currency":{
+		"core shards":10,
+		"intact cores":10,
+		"scrap":100,
+		"gold":100,
+		"diluted shimmer":10,
+		"pure shimmer":10,
+		"charged shimmer":10
+	},
+	"weapons":[
+		{
+			"type":"sword",
+			"rarity":0,
+			"skills":["stab"],
+			"bonuses":{"health":1, "slashing":2}
+		},
+		{
+			"type":"crossbow",
+			"rarity":0,
+			"skills":["shot"],
+			"bonuses":{"movement":1, "piercing":2}
+		}
+	]
+}

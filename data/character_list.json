@@ -1,0 +1,84 @@
+{
+	"characters":[
+		{
+			"name":"Marcus",
+			"team":0,
+			"unlocked":true,
+			"appearance":"images/tile041.png",
+			"avatar":"images/tile041.png",
+			"height":1.5,
+			"health":20,
+			"movement":5,
+			"mana":12,
+			"skills":[
+				"lucky bolt",
+				"dash",
+				"chaotic vortex",
+				"magic missile",
+				"harry",
+				"respite"
+			]
+		},
+		{
+			"name":"Amelia",
+			"team":0,
+			"unlocked":true,
+			"appearance":"images/tile041.png",
+			"avatar":"images/tile041.png",
+			"height":1.5,
+			"health":20,
+			"movement":5,
+			"mana":16,
+			"skills":[
+				"power shot",
+				"quick draw",
+				"homing shot"
+			]
+		},
+		{
+			"name":"Bradley",
+			"team":0,
+			"unlocked":true,
+			"appearance":"images/tile041.png",
+			"avatar":"images/tile041.png",
+			"height":1.5,
+			"health":30,
+			"armor":2,
+			"movement":5,
+			"mana":12,
+			"skills":[
+				"sweep",
+				"stun",
+				"throw"
+			]
+		},
+		{
+			"name":"Genevieve",
+			"team":0,
+			"unlocked":true,
+			"appearance":"images/tile041.png",
+			"avatar":"images/tile041.png",
+			"height":1.5,
+			"health":20,
+			"movement":5,
+			"mana":12,
+			"skills":[
+				"heal"
+			]
+		},
+		{
+			"name":"Victoria",
+			"team":0,
+			"unlocked":true,
+			"appearance":"images/tile041.png",
+			"avatar":"images/tile041.png",
+			"height":1.5,
+			"health":20,
+			"movement":5,
+			"mana":12,
+			"skills":[
+				
+			]
+		}
+	]
+}

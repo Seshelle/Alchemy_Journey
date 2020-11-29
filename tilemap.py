@@ -1,5 +1,7 @@
 import pygame
 from scenes import scenes
+import game_modes
+import game_state
 import entity
 import character
 from character import CharacterKeys
@@ -8,6 +10,7 @@ import ai_manager
 import user_interface
 import math
 import json
+import random
 
 tile_extent = (64, 32)
 
@@ -180,6 +183,26 @@ class TintColors:
     red = 0
 
 
+class MapKeys:
+    tile_sheet = "tile sheet"
+    sheet_rows = "sheet row"
+    sheet_columns = "sheet col"
+    tile_width = "tile width"
+    tile_height = "tile height"
+    spawn_points = "spawn points"
+    map_file = "map file"
+    characters = "characters"
+    map_width = "map width"
+    map_height = "map height"
+    border_width = "border width"
+    border_height = "border height"
+    camera_x = "camera x"
+    camera_y = "camera y"
+    spawn_x = "spawn x"
+    spawn_y = "spawn y"
+    scene = "scene"
+
+
 class TileMap:
     def __init__(self, filename):
         f = open(filename)
@@ -198,15 +221,15 @@ class TileMap:
 
         self.zoomed_bg = None
         self.interface_layer = pygame.Surface([a_settings.display_width, a_settings.display_height]).convert()
-        sheet = pygame.image.load(map_data["tile sheet"]).convert()
+        sheet = pygame.image.load(map_data[MapKeys.tile_sheet]).convert()
         self.ground_tiles = dict()
         self.tile_masks = dict()
 
         # create separate images from sprite sheet
-        sheet_rows = map_data["sheet row"]
-        sheet_columns = map_data["sheet col"]
-        tile_width = map_data["tile width"]
-        tile_height = map_data["tile height"]
+        sheet_rows = map_data[MapKeys.sheet_rows]
+        sheet_columns = map_data[MapKeys.sheet_columns]
+        tile_width = map_data[MapKeys.tile_width]
+        tile_height = map_data[MapKeys.tile_height]
         count = 0
         for i in range(sheet_columns):
             for j in range(sheet_rows):
@@ -224,9 +247,10 @@ class TileMap:
                 count += 1
 
         # read map data from file
-        self.spawn_points = [(3, 0), (5, 0)]
+        if MapKeys.spawn_points in map_data:
+            self.spawn_points = map_data[MapKeys.spawn_points]
         self.spawns_used = 0
-        with open(map_data["map file"], 'r') as map_file:
+        with open(map_data[MapKeys.map_file], 'r') as map_file:
             self.tile_list = json.load(map_file)
 
         self.create_background()
@@ -234,16 +258,22 @@ class TileMap:
 
         self.entity_list = []
 
-    def update(self, deltatime, screen):
+        self.change_scene = False
+        self.next_scene = None
+
+    def update(self, deltatime):
+        for e in self.entity_list:
+            e.update(deltatime)
+
+    def render(self, screen):
         real_offset = [0, 0]
         real_offset[0] = self.background_offset[0] * Camera.zoom + Camera.pos[0]
         real_offset[1] = self.background_offset[1] * Camera.zoom + Camera.pos[1]
         screen.blit(self.zoomed_bg, real_offset)
-        self.draw_all_entities(deltatime, screen)
+        self.draw_all_entities(screen)
 
-    def draw_all_entities(self, deltatime, screen):
+    def draw_all_entities(self, screen):
         for e in self.entity_list:
-            e.update(deltatime)
             # draw the entity if it is onscreen
             render_pos = e.get_render_pos()
             if onscreen_path(render_pos):
@@ -266,18 +296,18 @@ class TileMap:
     def add_entities(self, filename):
         with open(filename) as f:
             entity_data = json.load(f)
-            for c in entity_data["characters"]:
-                new_character = entity.Entity([c["spawn x"], c["spawn y"]], self, c)
+            for c in entity_data[MapKeys.characters]:
+                new_character = entity.Entity([c[MapKeys.spawn_x], c[MapKeys.spawn_y]], self, c)
                 self.entity_list.append(new_character)
         self.z_order_sort_entities()
 
     def setup_background(self, map_data):
-        self.map_width = map_data["map width"]
-        self.map_height = map_data["map height"]
-        self.border_width = map_data["border width"]
-        self.border_height = map_data["border height"]
-        Camera.pos[0] = map_data["camera x"]
-        Camera.pos[1] = map_data["camera y"]
+        self.map_width = map_data[MapKeys.map_width]
+        self.map_height = map_data[MapKeys.map_height]
+        self.border_width = map_data[MapKeys.border_width]
+        self.border_height = map_data[MapKeys.border_height]
+        Camera.pos[0] = map_data[MapKeys.camera_x]
+        Camera.pos[1] = map_data[MapKeys.camera_y]
         self.background_offset = (-self.border_width * tile_extent[0] * 2, -self.border_height * tile_extent[1])
         self.background = pygame.Surface([(self.map_width + self.border_width * 2 + 1) * tile_extent[0] * 2,
                                           (self.map_height + self.border_height * 2 + 1) * tile_extent[1]]).convert()
@@ -331,11 +361,43 @@ class TileMap:
         self.tile_list[str(tile_pos[0]) + ',' + str(tile_pos[1])] = tile_data
 
     def move_camera_to_path(self, tile):
-        # TODO: make camera lerp instead of teleporting
-        target_pos = path_to_world((tile[0] + 2, tile[1]))
-        Camera.pos[0] = -target_pos[0] + a_settings.display_width / 2
-        Camera.pos[1] = -target_pos[1] + a_settings.display_height / 2
-        self.move_camera_in_bounds()
+        destination = path_to_world((tile[0] - 3, tile[1] + 1))
+        destination[0] += self.background_offset[0]
+        destination[0] *= -1
+        destination[1] += self.background_offset[1]
+        destination[1] *= -1
+        move = [destination[0] - Camera.pos[0], destination[1] - Camera.pos[1]]
+        difference = move.copy()
+        distance = difference[0] ** 2 + difference[1] ** 2
+        full_square = distance * 2 / 3
+        square = distance
+        distance = math.sqrt(distance)
+        if distance == 0:
+            return
+        direction = [move[0] > 0, move[1] > 0]
+        wait_ms = 3
+        speed = 400
+        max_speed = 0.7
+        min_speed = 3
+
+        screen = pygame.display.get_surface()
+        while [difference[0] > 0, difference[1] > 0] == direction:
+            pygame.event.get()
+            actual_wait = pygame.time.wait(wait_ms)
+            speed_mult = abs(full_square - square) / full_square
+            if speed_mult < max_speed:
+                speed_mult = max_speed
+            if speed_mult > min_speed:
+                speed_mult = min_speed
+            Camera.pos[0] += move[0] * actual_wait / (speed * speed_mult)
+            Camera.pos[1] += move[1] * actual_wait / (speed * speed_mult)
+            self.render(screen)
+            pygame.display.flip()
+            difference = [destination[0] - Camera.pos[0], destination[1] - Camera.pos[1]]
+            square = difference[0] ** 2 + difference[1] ** 2
+            if square < 0.1:
+                break
+        Camera.pos = destination
 
     def move_camera_in_bounds(self):
         y_max = -(self.background_offset[1] + tile_extent[1]) * Camera.zoom
@@ -376,6 +438,10 @@ class TileMap:
         self.entity_list.append(new_entity)
         self.z_order_sort_entities()
 
+    def change_mode(self, next_mode):
+        self.change_scene = True
+        self.next_scene = next_mode
+
 
 class CombatMap(TileMap):
     mouse_coords = None
@@ -386,8 +452,8 @@ class CombatMap(TileMap):
         map_data = json.load(f)
         f.close()
 
-        if "scene" in map_data.keys():
-            self.scene = scenes[map_data["scene"]](self)
+        if MapKeys.scene in map_data.keys():
+            self.scene = scenes[map_data[MapKeys.scene]](self)
             self.has_scene = True
         else:
             self.scene = None
@@ -439,17 +505,31 @@ class CombatMap(TileMap):
         self.selected_character = None
         self.character_list = []
         self.interface = user_interface.UserInterface()
-        self.interface.add_button((0.9, 0.95, 0.15, 0.05), "End Turn", "end turn")
+        self.interface.add_image_button((0.8, 0.9, 0.15, 0.05), "End Turn", "end turn")
         self.controlled_characters = []
         self.ai_manager = ai_manager.AIManager(self)
 
-        self.populate_map(filename)
+        if "enemy spawn area" in map_data.keys():
+            self.enemy_spawn_area = map_data["enemy spawn area"]
+            self.populate_map()
+            self.add_players(game_state.GameState.player_characters)
 
-    def populate_map(self, filename):
-        self.add_entities(filename)
-        self.add_entities('data/player_characters.json')
+    def populate_map(self):
+        # make up an assortment of enemies to face
+        enemy_list = None
+        with open("data/enemy_list.json") as enemy_file:
+            enemy_list = json.load(enemy_file)
 
-    def update(self, deltatime, screen):
+        # just grab 5 random enemies from basic group for now
+        enemy_choices = enemy_list["normal enemies"]["enforcer"]
+        enemy_data = []
+        for i in range(5):
+            enemy_name = random.choice(enemy_choices)
+            enemy_data.append(enemy_list[enemy_name])
+
+        self.add_entities(enemy_data)
+
+    def update(self, deltatime):
         if self.has_scene:
             self.scene.update(deltatime)
 
@@ -467,6 +547,15 @@ class CombatMap(TileMap):
 
             self.move_camera_in_bounds()
 
+        for e in self.entity_list:
+            e.update(deltatime)
+
+        # update mouse coordinates when mouse moves to new tile
+        if screen_to_path(pygame.mouse.get_pos()) != self.mouse_coords:
+            self.mouse_coords = screen_to_path(pygame.mouse.get_pos())
+            self.skill_display_update = True
+
+    def render(self, screen):
         # create offset used by tint_layer
         real_offset = [0, 0]
         real_offset[0] = self.background_offset[0] * Camera.zoom
@@ -480,17 +569,12 @@ class CombatMap(TileMap):
         bg_offset[1] = real_offset[1] + Camera.pos[1]
         screen.blit(self.zoomed_bg, bg_offset)
 
-        # update mouse coordinates when mouse moves to new tile
-        mouse_change = False
-        if screen_to_path(pygame.mouse.get_pos()) != self.mouse_coords:
-            self.mouse_coords = screen_to_path(pygame.mouse.get_pos())
-            mouse_change = True
-            self.skill_display_update = True
+        self.draw_movement_path(screen)
 
-        self.draw_movement_path(screen, mouse_change)
         if self.selected_character is not None:
             self.display_skill_info(self.selected_character.get_selected_skill())
-        self.draw_all_entities(deltatime, screen)
+        self.skill_display_update = False
+        self.draw_all_entities(screen)
 
         if self.has_scene:
             self.scene.render(screen)
@@ -515,14 +599,14 @@ class CombatMap(TileMap):
             # get a list of all tiles that don't need an update
             tiles_to_cache = set()
             for color in self.tinted_tiles.keys():
-                # the tiles in both sets are tiles that don't need updating
                 tiles_to_cache = tiles_to_cache.union(self.tinted_tiles[color] & self.old_tinted_tiles[color])
+
             # update tiles that have any differences between old and new sets
             for color in self.tinted_tiles.keys():
                 for tile in self.old_tinted_tiles[color] ^ self.tinted_tiles[color]:
                     tiles_to_cache.discard(tile)
 
-            # zoom_mask = self.zoom_image(self.tile_mask_image)
+            # create a surface to transfer from clean bg, then mask it in shape of the tile
             zoom_mask = self.zoom_image(self.white_tile_tint)
             clean_surface = pygame.Surface(
                 (tile_extent[0] * 2 * Camera.zoom,
@@ -564,7 +648,7 @@ class CombatMap(TileMap):
                         tint_pos[1] = tint_pos[1] * Camera.zoom - real_offset[1]
                         self.zoomed_bg.blit(zoom_tint, tint_pos)
 
-    def draw_movement_path(self, screen, mouse_change):
+    def draw_movement_path(self, screen):
         zoom_selection = self.zoom_image(self.selection_square)
         # draw path from selected ally entity to highlighted tile
         if self.selected_character is not None:
@@ -573,7 +657,7 @@ class CombatMap(TileMap):
 
             if self.selected_character.accepting_input and selected_skill is None and self.selected_character.has_move:
                 # calculate a new path whenever destination changes
-                if mouse_change:
+                if self.skill_display_update:
                     self.path = self.find_path(
                         self.selected_character.position,
                         self.mouse_coords,
@@ -627,29 +711,31 @@ class CombatMap(TileMap):
             screen.blit(zoom_selection, path_to_screen(self.mouse_coords))
 
     def display_skill_info(self, skill, force_update=False):
+        # render the area that will be hit by a skill
         if skill is not None:
-            if force_update or skill.get_data("area") > 0 and self.skill_display_update:
-                self.skill_display_update = False
-                # render the area that will be hit by an area skill
-                if skill != self.cached_skill or force_update:
-                    range_display = skill.display_range()
+            tags = skill.get_data("tags")
+            if force_update or "aimed" in tags and self.skill_display_update:
+                if force_update or skill != self.cached_skill:
+                    range_display = skill.targetable_tiles(True)
                     self.cached_skill = skill
                 else:
                     range_display = self.tinted_tiles[TintColors.yellow].copy()
                 self.clear_tinted_tiles()
-                self.tinted_tiles[TintColors.red] = skill.display_targets(self.mouse_coords)
+                if "friendly" in tags:
+                    self.tinted_tiles[TintColors.green] = skill.display_targets(self.mouse_coords)
+                else:
+                    self.tinted_tiles[TintColors.red] = skill.display_targets(self.mouse_coords)
                 self.tinted_tiles[TintColors.yellow] = range_display
 
     def notify(self, event):
         # map scene gets first dibs on consuming input
-        if self.scene.notify(event):
+        if self.has_scene and self.scene.notify(event):
             return
 
         # check if map UI consumes the input
         button_pressed = self.interface.notify(event)
         if button_pressed is not None:
             if button_pressed == "end turn":
-                self.interface.set_button_active("end turn", False)
                 self.end_turn()
             return
 
@@ -660,27 +746,28 @@ class CombatMap(TileMap):
 
         if event.type == pygame.MOUSEBUTTONDOWN:
             mouse_coords = screen_to_path(pygame.mouse.get_pos())
+            selected = self.selected_character
+            skill = None
+            aimed = False
+            if selected is not None:
+                skill = selected.get_selected_skill()
+                if skill is not None:
+                    aimed = "aimed" in skill.get_data("tags") or "no target" in skill.get_data("tags")
 
             if event.button == 1:
-                # check if skill or movement is selected
-                free_aim = False
-                if self.selected_character is not None:
-                    selected_skill = self.selected_character.get_selected_skill()
-                    if selected_skill is not None and selected_skill.get_data("area") > 0:
-                        free_aim = True
 
-                if not free_aim:
+                if not aimed:
                     # find if tile is occupied by a character
                     for c in self.character_list:
                         if mouse_coords == c.position:
 
-                            # when an enemy is clicked on while a skill is selected, try to use the skill
-                            if not c.ally and self.selected_character is not None and \
+                            # when a valid target is clicked on while a skill is selected, try to use the skill
+                            if skill is not None and (c.ally == skill.has_tag("buff") or skill.has_tag("friendly fire")) and \
                                     self.selected_character.use_skill(mouse_coords):
                                 return
 
                             # deselect previous character and select the new one
-                            if self.selected_character is not None:
+                            if selected is not None:
                                 self.selected_character.set_selected(False)
 
                             self.clear_tinted_tiles()
@@ -688,26 +775,25 @@ class CombatMap(TileMap):
                             return
 
                     # move selected character to unoccupied position if able
-                    if self.selected_character is not None and self.selected_character.accepting_input:
-                        if self.selected_character.commit_move(self.path):
-                            self.clear_tinted_tiles()
+                    if selected is not None and selected.accepting_input and selected.commit_move(self.path):
+                        self.clear_tinted_tiles()
                 else:
                     # center attack on clicked tile if free aiming
-                    self.selected_character.use_skill(mouse_coords)
+                    selected.use_skill(mouse_coords)
 
             elif event.button == 3:
-                if self.selected_character is not None:
+                if selected is not None:
                     self.clear_tinted_tiles()
-                    if self.selected_character.get_selected_skill() is None:
+                    if skill is None:
                         # right click to deselect unit
                         self.selected_character = self.selected_character.set_selected(False)
                     else:
                         # right click to cancel attack
-                        self.selected_character.set_selected(True)
+                        selected.set_selected(True)
 
         elif event.type == pygame.KEYDOWN:
             # cycle through controllable characters and focus on them
-            if event.key == pygame.K_TAB:
+            if event.key == pygame.K_TAB and len(self.controlled_characters) > 0:
                 self.clear_tinted_tiles()
                 if self.selected_character is None:
                     self.selected_character = self.controlled_characters[0].set_selected(True)
@@ -742,23 +828,31 @@ class CombatMap(TileMap):
                 self.tint_layer_update = True
                 self.move_camera_in_bounds()
 
-    def add_entities(self, filename):
-        with open(filename) as f:
-            entity_data = json.load(f)
-            for c in entity_data["characters"]:
-                # team 0 is the player controlled team
-                if c["team"] == 0:
-                    new_character = character.Character(self.get_spawn(), self, c)
-                    self.controlled_characters.append(new_character)
-                else:
-                    new_character = character.AICharacter([c["spawn x"], c["spawn y"]], self, self.ai_manager, c)
-                    self.ai_manager.add_actor(new_character)
+    def add_players(self, entity_data):
+        for c in entity_data.values():
+            # team 0 is the player controlled team
+            new_character = character.Character(self.get_spawn(), self, c)
+            self.controlled_characters.append(new_character)
+            self.character_list.append(new_character)
+            self.entity_list.append(new_character)
 
-                # add entity to character list if it makes decisions
-                if new_character.intelligent:
-                    self.character_list.append(new_character)
-                self.entity_list.append(new_character)
+    def add_entities(self, entity_data):
+        for c in entity_data:
+            spawn = self.get_enemy_spawn_location()
+            new_character = character.AICharacter(spawn, self, self.ai_manager, c)
+            self.character_list.append(new_character)
+            self.entity_list.append(new_character)
+
         self.z_order_sort_entities()
+
+    def get_enemy_spawn_location(self):
+        min_x = self.enemy_spawn_area[0][0]
+        max_x = self.enemy_spawn_area[1][0]
+        x = random.randint(min_x, max_x)
+        min_y = self.enemy_spawn_area[0][1]
+        max_y = self.enemy_spawn_area[1][1]
+        y = random.randint(min_y, max_y)
+        return [x, y]
 
     def remove_entities(self):
         if self.selected_character is not None and self.selected_character.delete:
@@ -848,7 +942,7 @@ class CombatMap(TileMap):
                 return False
         return True
 
-    def find_all_paths(self, start, max_length, projectile=False, edges_only=False):
+    def find_all_paths(self, start, max_length, projectile=False, edges_only=False, indirect=False):
         # Create start node
         start_node = Node(None, tuple(start))
 
@@ -893,11 +987,14 @@ class CombatMap(TileMap):
                     continue
 
                 # Make sure tile is not blocked
-                if not projectile:
-                    if not self.in_bounds(node_position, True):
+                if indirect:
+                    if not self.in_bounds(node_position, False, False):
+                        continue
+                elif projectile:
+                    if not self.in_bounds(node_position, False, True):
                         continue
                 else:
-                    if not self.in_bounds(node_position, False, True):
+                    if not self.in_bounds(node_position, True):
                         continue
 
                 # test line of sight if required
@@ -1041,21 +1138,75 @@ class CombatMap(TileMap):
 
     def start_turn(self):
         self.clear_tinted_tiles()
-        if self.selected_character is not None:
-            self.selected_character = self.selected_character.set_selected(False)
         for c in self.entity_list:
             c.start_of_round_update()
-        self.interface.set_button_active("end turn", True)
         self.remove_entities()
 
+        if not self.detect_victory() and not self.detect_failure():
+            self.interface.set_button_active("end turn", True)
+
     def end_turn(self):
+        self.interface.set_button_active("end turn", False)
         self.clear_tinted_tiles()
         if self.selected_character is not None:
             self.selected_character = self.selected_character.set_selected(False)
+        self.remove_entities()
+
+        # stabilize downed allies
+        for c in self.controlled_characters:
+            if c.knocked_out:
+                position = c.position
+                adj_set = set()
+                for adj in [(0, 1), (1, 0), (1, 1), (-1, 0), (0, -1), (-1, -1), (1, -1), (-1, 1)]:
+                    adj_set.add((position[0] + adj[0], position[1] + adj[1]))
+                adjacent_allies = self.get_characters_in_set(adj_set)
+                for ally in adjacent_allies:
+                    if ally.ally and ally.has_action:
+                        c.stabilize()
+
         for c in self.entity_list:
             c.end_of_round_update()
-        self.ai_manager.start_ai_turn()
-        self.remove_entities()
+        if not self.detect_victory() and not self.detect_failure():
+            self.ai_manager.start_ai_turn()
+
+    def detect_victory(self):
+        # let scene object handle potential alternate victory conditions
+        alternate_victory = None
+        if self.has_scene:
+            alternate_victory = self.scene.detect_victory()
+            if alternate_victory is not None:
+                return alternate_victory
+        if alternate_victory is None:
+            # otherwise check if there are any remaining enemies on the map
+            victory = True
+            for c in self.character_list:
+                if not c.ally:
+                    victory = False
+                    break
+            if victory:
+                # update game state with current player state
+                for c in self.controlled_characters:
+                    game_state.update_player(c)
+                self.change_mode(game_modes.ExpeditionScene())
+                return True
+        return False
+
+    def detect_failure(self):
+        # check if all controllable characters are knocked out
+        for c in self.controlled_characters:
+            if not c.knocked_out:
+                return False
+        return self.fail_scene()
+
+    def fail_scene(self):
+        failure = None
+        if self.has_scene:
+            failure = self.scene.handle_failure()
+            if failure is not None:
+                return failure
+        if failure is None:
+            self.change_mode(game_modes.HubScene())
+            return True
 
 
 class FreeMoveMap(TileMap):
@@ -1067,8 +1218,8 @@ class FreeMoveMap(TileMap):
         self.add_entities(filename)
         self.control_entity = None
 
-    def update(self, deltatime, screen):
-        super().update(deltatime, screen)
+    def update(self, deltatime):
+        super().update(deltatime)
 
         if self.control_entity is None:
             keys = pygame.key.get_pressed()
@@ -1099,14 +1250,14 @@ class FreeMoveMap(TileMap):
 
             for e in self.interactive_entities:
                 e.active_when_adjacent(self.player.position)
+        self.z_order_sort_entities()
 
+    def render(self, screen):
+        super().render(screen)
         for e in self.interactive_entities:
             e.second_render(screen)
 
-        self.z_order_sort_entities()
-
     def notify(self, event):
-        super().notify(event)
         if self.control_entity is not None:
             self.control_entity.notify(event)
         elif event.type == pygame.KEYDOWN:
@@ -1123,13 +1274,17 @@ class FreeMoveMap(TileMap):
     def return_control(self):
         self.control_entity = None
 
-    def add_entities(self, filename):
+    def add_entities(self, filename, team=0):
         with open(filename) as f:
             entity_data = json.load(f)
-            for c in entity_data["characters"]:
-                new_character = entity.InteractiveEntity([c["spawn x"], c["spawn y"]], self, c)
+            for c in entity_data[MapKeys.characters]:
+                new_character = entity.NPC([c[MapKeys.spawn_x], c[MapKeys.spawn_y]], self, c)
                 self.entity_list.append(new_character)
                 self.interactive_entities.append(new_character)
+            for c in entity_data["exits"]:
+                new_exit = entity.EmbarkLocation([c[MapKeys.spawn_x], c[MapKeys.spawn_y]], self, c)
+                self.entity_list.append(new_exit)
+                self.interactive_entities.append(new_exit)
         self.z_order_sort_entities()
 
     def try_move_player(self, move_keys, speed, no_mult=False):

@@ -11,6 +11,7 @@
 	"border height": 10,
 	"camera x":0,
 	"camera y": 0,
+	"spawn points":[[3, 0],[4, 0],[3, 1],[3, 2]],
 	"characters":[
 		{
 			"spawn x":5,
@@ -19,6 +20,15 @@
 			"height":1.5,
 			"message":"E: TALK",
 			"dialogue":"data/dialogue_test.json"
+		}
+	],
+	"exits":[
+		{
+			"spawn x":5,
+			"spawn y":-3,
+			"appearance":"images/tile039.png",
+			"height":1.5,
+			"message":"E: EMBARK"
 		}
 	]
 }

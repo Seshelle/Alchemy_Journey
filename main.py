@@ -18,7 +18,7 @@ debug = False
 # set up fonts
 basicFont = pygame.font.SysFont(None, 36)
 
-game_mode = game_modes.MainMenu(screen)
+game_mode = game_modes.MainMenu()
 while not crashed:
 
     keypress = None
@@ -32,11 +32,13 @@ while not crashed:
                 if event.mod & pygame.KMOD_LSHIFT:
                     interact(local=locals())
             if event.key == pygame.K_ESCAPE:
-                crashed = True
+                game_mode.toggle_pause()
         game_mode.notify(event)
 
     # run upkeep and render for each object
     deltatime = pygame.time.get_ticks() - runtime
+    if deltatime > 50:
+        deltatime = 50
     runtime = pygame.time.get_ticks()
 
     # cProfile.runctx('game_mode.update(deltatime)', globals(), locals())

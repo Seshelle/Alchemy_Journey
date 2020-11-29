@@ -82,7 +82,6 @@ class Dialogue:
     def notify(self, event):
         if self.active and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             self.next_line()
-            print(self.active)
             return self.active
 
     def set_active(self, active):

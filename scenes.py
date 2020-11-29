@@ -10,6 +10,12 @@ class Scene:
     def get_allow_input(self):
         return not self.block_input
 
+    def detect_victory(self):
+        return None
+
+    def handle_failure(self):
+        return None
+
     def update(self, deltatime):
         pass
 

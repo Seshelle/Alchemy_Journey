@@ -1,7 +1,9 @@
 import pygame
-import math
 import alchemy_settings as a_settings
 from dialogue import draw_shadowed_text
+import json
+import game_modes
+from game_state import start_expedition
 
 
 def get_text_input(screen):
@@ -36,16 +38,34 @@ def get_text_input(screen):
         pygame.display.update()
 
 
-class InterfaceImage:
-    def __init__(self, rect, text):
-        self.rect = rect
-        self.color = pygame.Color("purple")
-        self.image = pygame.Surface((rect[2], rect[3])).convert()
-        self.image.fill(self.color)
-        self.text = text
-        self.font = pygame.font.SysFont(None, 48)
-        text_image = self.font.render(text, True, pygame.Color("white"))
-        self.image.blit(text_image, (0, 0))
+class ImageButton:
+    def __init__(self, rect, text, button_id, hover_text=None, image_file=None, is_button=True):
+        if image_file is not None:
+            self.image = pygame.image.load(image_file).convert()
+            size = self.image.get_size()
+            self.rect = (rect[0], rect[1], size[0], size[1])
+        else:
+            self.rect = rect
+            self.image = pygame.Surface((rect[2], rect[3]))
+            self.image.fill(pygame.Color("purple"))
+
+        if text is not None:
+            font = pygame.font.SysFont(None, 48)
+            text_image = font.render(text, True, pygame.Color("white"))
+            self.image.blit(text_image, (0, 0))
+
+        self.has_hover_text = hover_text is not None
+        if self.has_hover_text:
+            # TODO: replace these magic numbers
+            self.hover_size = (256, 128)
+            hover_font = pygame.font.SysFont(None, 26)
+            self.hover_text_image = pygame.Surface(self.hover_size).convert()
+            self.hover_text_image.fill(pygame.Color("orange"))
+            draw_shadowed_text(self.hover_text_image, hover_text, pygame.Color("white"),
+                               (0, 0, self.hover_size[0], self.hover_size[1]), hover_font, True)
+
+        self.button_id = button_id
+        self.is_button = is_button
 
         self.active = True
 
@@ -56,91 +76,71 @@ class InterfaceImage:
         if self.active:
             screen.blit(self.image, self.rect)
 
-    def mouse_overlap(self, mouse_pos):
-        if not self.active:
-            return False
-        if self.rect[0] <= mouse_pos[0] <= self.rect[0] + self.rect[2] and \
-                self.rect[1] <= mouse_pos[1] <= self.rect[1] + self.rect[3]:
-            return True
-        return False
-
-
-class UIButton(InterfaceImage):
-    def __init__(self, rect, text, button_id, is_button=True, hover_text=None):
-        super().__init__(rect, text)
-
-        self.button_id = button_id
-        self.is_button = is_button
-
-        self.has_hover_text = False
-        if hover_text is not None:
-            self.has_hover_text = True
-            # TODO: replace these magic numbers
-            self.hover_size = (256, 128)
-            hover_font = pygame.font.SysFont(None, 26)
-            self.hover_text_image = pygame.Surface(self.hover_size).convert()
-            self.hover_text_image.fill(pygame.Color("orange"))
-            draw_shadowed_text(self.hover_text_image, hover_text, pygame.Color("white"),
-                               (0, 0, self.hover_size[0], self.hover_size[1]), hover_font, True)
-
     def second_render(self, screen):
         mouse_pos = pygame.mouse.get_pos()
         if self.has_hover_text and self.mouse_overlap(mouse_pos):
             screen.blit(self.hover_text_image, (mouse_pos[0], mouse_pos[1] - self.hover_size[1]))
 
+    def mouse_overlap(self, mouse_pos):
+        if self.is_button and self.active:
+            if self.rect[0] <= mouse_pos[0] <= self.rect[0] + self.rect[2] and \
+                    self.rect[1] <= mouse_pos[1] <= self.rect[1] + self.rect[3]:
+                return True
+        return False
+
 
 class UserInterface:
-    def __init__(self):
+    def __init__(self, start_active=True):
         self.width = a_settings.display_width
         self.height = a_settings.display_height
-        self.buttons = []
+        self.buttons = {}
         self.top_layer_images = []
         self.bottom_layer_images = []
-        self.active = True
+        self.active = start_active
 
     def set_active(self, active):
         self.active = active
 
     def set_button_active(self, button_id, active):
-        for b in self.buttons:
-            if b.button_id == button_id:
-                b.set_active(active)
+        self.buttons[button_id].set_active(active)
 
     def set_all_buttons_active(self, active=True):
-        for b in self.buttons:
+        for b in self.buttons.values():
             b.set_active(active)
 
-    def add_image(self, rect, text, bottom_layer=True):
-        image_rect = self.ratio_rect_to_screen_rect(rect)
-        if bottom_layer:
-            self.bottom_layer_images.append(InterfaceImage(image_rect, text))
-        else:
-            self.top_layer_images.append(InterfaceImage(image_rect, text))
+    def add_image_button(self, rect, text, button_id, hover_text=None, image_file=None, is_button=True):
+        if rect[0] < 1 and rect[1] < 1 and (len(rect) < 3 or rect[3] < 1):
+            rect = self.ratio_rect_to_screen_rect(rect)
+        self.buttons[button_id] = ImageButton(rect, text, button_id, hover_text, image_file, is_button)
 
-    def add_button(self, rect, text, button_id, is_button=True, hover_text=None):
-        button_rect = self.ratio_rect_to_screen_rect(rect)
-        self.buttons.append(UIButton(button_rect, text, button_id, is_button, hover_text))
+    def move_button(self, button_id, new_rect):
+        if new_rect[0] < 1 and new_rect[1] < 1 and (len(new_rect) < 3 or new_rect[3] < 1):
+            new_rect = self.ratio_rect_to_screen_rect(new_rect)
+        self.buttons[button_id].rect = new_rect
 
     def ratio_rect_to_screen_rect(self, rect):
-        wh = (self.width * rect[2], self.height * rect[3])
-        screen_rect = (math.ceil(-wh[0] / 2) + self.width * rect[0],
-                       math.ceil(-wh[1] / 2) + self.height * rect[1]) + wh
+        if len(rect) == 4:
+            wh = (self.width * rect[2], self.height * rect[3])
+        else:
+            wh = (self.width, self.height)
+        screen_rect = (self.width * rect[0],
+                       self.height * rect[1]) + wh
         return screen_rect
 
     def render(self, screen):
         if self.active:
             for image in self.bottom_layer_images:
                 image.render(screen)
-            for button in self.buttons:
+            for button in self.buttons.values():
                 button.render(screen)
-            for button in self.buttons:
+            for button in self.buttons.values():
                 button.second_render(screen)
             for image in self.top_layer_images:
                 image.render(screen)
 
     def notify(self, event):
         if self.active and event.type == pygame.MOUSEBUTTONDOWN:
-            for button in self.buttons:
+            for button in self.buttons.values():
                 if button.is_button and button.mouse_overlap(pygame.mouse.get_pos()):
                     return button.button_id
         return None
@@ -148,4 +148,64 @@ class UserInterface:
     def reset(self, screen):
         self.width = screen.get_width()
         self.height = screen.get_height()
-        self.buttons = []
+        self.buttons = {}
+
+
+class EmbarkInterface(UserInterface):
+    def __init__(self):
+        super().__init__(False)
+        # define where the character's centers are for each box
+        self.free_center = 0.1
+        self.chosen_center = 0.6
+        self.box_width = 0.33
+
+        # add a left box and a right box to hold characters
+        # self.add_text((self.free_center, 0.5, self.box_width, 0.9), pygame.Color("black"))
+        # self.add_text((self.chosen_center, 0.5, self.box_width, 0.9), pygame.Color("black"))
+
+        # add a button to embark and begin the expedition
+        self.add_image_button((0.4, 0.9, 0.2, 0.1), "Embark", "exit")
+
+        # fill left box with characters from character_list that are unlocked
+        self.free_characters = {}
+        self.chosen_characters = {}
+        self.character_names = []
+        self.char_height = 0.15
+        with open("data/character_list.json") as char_file:
+            char_data = json.load(char_file)
+            for c in char_data["characters"]:
+                char_name = c["name"]
+                self.free_characters[char_name] = c
+                self.add_image_button(
+                    (self.free_center, self.char_height * len(self.free_characters), self.box_width,
+                     self.char_height - 0.02),
+                    char_name,
+                    char_name
+                )
+                self.character_names.append(char_name)
+
+    def notify(self, event):
+        if self.active and event.type == pygame.MOUSEBUTTONDOWN:
+            for button in self.buttons.values():
+                if button.mouse_overlap(pygame.mouse.get_pos()):
+                    b_id = button.button_id
+                    # Clicking on a character button moves the character from
+                    # free to chosen and vice-versa
+                    # TODO: Remove empty slot left over after you remove a character from a box
+                    if len(self.chosen_characters) < 4 and b_id in self.free_characters.keys():
+                        self.chosen_characters[b_id] = self.free_characters[b_id]
+                        del self.free_characters[b_id]
+                        new_rect = (self.chosen_center, self.char_height * len(self.chosen_characters),
+                                    self.box_width, self.char_height - 0.02)
+                        self.move_button(b_id, new_rect)
+                    elif b_id in self.chosen_characters.keys():
+                        self.free_characters[b_id] = self.chosen_characters[b_id]
+                        del self.chosen_characters[b_id]
+                        new_rect = (self.free_center, self.char_height * len(self.free_characters),
+                                    self.box_width, self.char_height - 0.02)
+                        self.move_button(b_id, new_rect)
+                    elif b_id == "exit":
+                        if len(self.chosen_characters) > 0:
+                            start_expedition(self.chosen_characters, {}, {})
+                            return game_modes.ExpeditionScene()
+        return None

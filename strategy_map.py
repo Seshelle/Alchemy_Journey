@@ -2,11 +2,14 @@ import pygame
 import random
 from tilemap import Camera
 import alchemy_settings as a_settings
-import math
+from game_state import GameState
+import game_modes
 
 
 class Icon:
     size = 64
+    grid_size = size * 3
+    grid_variation = size
     combat = 0
     elite_combat = 1
     replenish = 2
@@ -20,6 +23,11 @@ class Icon:
 class PathNode:
     def __init__(self, grid_pos=(-1, -1), symbol=-1):
         self.grid_pos = grid_pos
+        scatter = [random.randint(0, Icon.grid_variation), random.randint(0, Icon.grid_variation)]
+        self.world_pos = (
+            grid_pos[0] * Icon.grid_size + scatter[0],
+            grid_pos[1] * Icon.grid_size + scatter[1]
+        )
         self.symbol = symbol
         self.next_nodes = []
         self.has_entrance = False
@@ -56,6 +64,14 @@ class PathNode:
                     chosen_node = node
         return chosen_node
 
+    def mouse_overlap(self, mouse_pos):
+        if self.symbol < 0:
+            return False
+        screen_pos = [self.world_pos[0] + Camera.pos[0], self.world_pos[1] + Camera.pos[1]]
+        if screen_pos[0] < mouse_pos[0] < screen_pos[0] + Icon.size and \
+                screen_pos[1] < mouse_pos[1] < screen_pos[1] + Icon.size:
+            return True
+
 
 class StrategyMap:
     def __init__(self):
@@ -75,27 +91,13 @@ class StrategyMap:
         # create map symbol grid
         self.grid_width = 7
         self.grid_height = 12
-        self.grid_size = Icon.size * 3
-        self.grid_variation = Icon.size
         self.path_grid = []
-        self.offset_grid = []
         blank_column = []
         for i in range(self.grid_height):
             blank_column.append(PathNode())
         for i in range(self.grid_width):
             # create an empty grid
             self.path_grid.append(blank_column.copy())
-            offset_column = []
-            # randomly offset the symbols so they look less grid-like
-            for j in range(self.grid_height):
-                if j > 1:
-                    offset_column.append(
-                        (random.randint(0, self.grid_variation),
-                         random.randint(0, self.grid_variation))
-                    )
-                else:
-                    offset_column.append((0, 0))
-            self.offset_grid.append(offset_column)
         self.grid_seed = random.random()
 
         # create dots for dotted line
@@ -103,11 +105,11 @@ class StrategyMap:
         self.path_dot.fill(pygame.Color("black"))
 
         # center camera at bottom of map
-        Camera.pos[0] = (a_settings.display_width - self.grid_width * self.grid_size) / 2
-        Camera.pos[1] = -self.grid_height * self.grid_size + a_settings.display_height
+        Camera.pos[0] = (a_settings.display_width - self.grid_width * Icon.grid_size) / 2
+        Camera.pos[1] = -self.grid_height * Icon.grid_size + a_settings.display_height
 
         # generate potential paths from seed
-        # random.seed(9)
+        random.seed(GameState.expedition_seed)
 
         # put one event node at the end
         end_pos = round(self.grid_width / 2)
@@ -170,37 +172,39 @@ class StrategyMap:
 
         # draw paths between connected nodes
         self.map_image = pygame.Surface(
-            (self.grid_width * self.grid_size + self.grid_variation,
-             self.grid_height * self.grid_size + self.grid_variation)
+            (self.grid_width * Icon.grid_size + Icon.grid_variation,
+             self.grid_height * Icon.grid_size + Icon.grid_variation)
         ).convert()
         self.map_image.fill((190, 140, 90))
         for x in range(self.grid_width):
             for y in range(self.grid_height):
                 path_node = self.path_grid[x][y]
                 path_pos = [
-                    x * self.grid_size + Icon.size / 2 + self.offset_grid[x][y][0],
-                    y * self.grid_size + Icon.size / 3 + self.offset_grid[x][y][1]
+                    path_node.world_pos[0] + Icon.size / 2,
+                    path_node.world_pos[1] + Icon.size / 3
                 ]
                 for next_node in path_node.next_nodes:
-                    n_pos = next_node.grid_pos
                     next_pos = [
-                        n_pos[0] * self.grid_size + Icon.size / 2 + self.offset_grid[n_pos[0]][n_pos[1]][0],
-                        n_pos[1] * self.grid_size + Icon.size * 2 / 3 + self.offset_grid[n_pos[0]][n_pos[1]][1]
+                        next_node.world_pos[0] + Icon.size / 2,
+                        next_node.world_pos[1] + Icon.size * 2 / 3
                     ]
                     pygame.draw.line(self.map_image, pygame.Color("black"), path_pos, next_pos, 3)
 
         # draw all symbols to the map
         for x in range(self.grid_width):
             for y in range(self.grid_height):
-                symbol = self.path_grid[x][y].symbol
-                if symbol >= 0:
-                    self.map_image.blit(
-                        self.map_icons[symbol],
-                        (x * self.grid_size + self.offset_grid[x][y][0],
-                         y * self.grid_size + self.offset_grid[x][y][1])
-                    )
+                node = self.path_grid[x][y]
+                if node.symbol >= 0:
+                    self.map_image.blit(self.map_icons[node.symbol], node.world_pos)
 
-    def update(self, deltatime, screen):
+        self.change_scene = False
+        self.next_scene = None
+        self.expedition_location = GameState.expedition_location
+        if self.expedition_location[1] >= 0:
+            self.circle_node(self.expedition_location)
+        random.seed()
+
+    def update(self, deltatime):
 
         keys = pygame.key.get_pressed()
         if keys[pygame.K_w]:
@@ -212,9 +216,37 @@ class StrategyMap:
         if keys[pygame.K_d]:
             Camera.pos[0] -= deltatime * Camera.speed
 
+    def render(self, screen):
         screen.fill((190, 140, 90))
         screen.blit(self.map_image, Camera.pos)
 
     def notify(self, event):
         # TODO: click node to go to combat
-        pass
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            mouse_pos = pygame.mouse.get_pos()
+            location = GameState.expedition_location
+            # check if mouse over a symbol on correct row
+            if location[1] < 0:
+                # row < 0 means choose between starting locations
+                for i in range(self.grid_width):
+                    node = self.path_grid[i][self.grid_height - 1]
+                    if node.mouse_overlap(mouse_pos):
+                        return self.go_to_scene(node.grid_pos)
+            else:
+                current_node = self.path_grid[location[0]][location[1]]
+                for next_node in current_node.next_nodes:
+                    if next_node.mouse_overlap(mouse_pos):
+                        GameState.expedition_location = next_node.grid_pos
+                        return self.go_to_scene(next_node.grid_pos)
+        return None
+
+    def circle_node(self, grid_pos):
+        node = self.path_grid[grid_pos[0]][grid_pos[1]]
+        center = (node.world_pos[0] + round(Icon.size / 2), node.world_pos[1] + round(Icon.size / 2))
+        pygame.draw.circle(self.map_image, pygame.Color("black"), center, round(Icon.size / 2), 4)
+
+    def go_to_scene(self, grid_pos):
+        GameState.expedition_location = grid_pos
+        area = self.path_grid[grid_pos[0]][grid_pos[1]]
+        return game_modes.CombatScene("data/combat_test_scene.json")
+

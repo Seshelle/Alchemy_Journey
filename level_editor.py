@@ -21,11 +21,13 @@ class LevelEditor(tilemap.CombatMap):
 
         self.painting = False
 
-    def update(self, deltatime, screen):
+    def update(self, deltatime):
+        screen = pygame.display.get_surface()
         prev_coords = [0, 0]
         if self.mouse_coords is not None:
             prev_coords = [self.mouse_coords[0], self.mouse_coords[1]]
-        super().update(deltatime, screen)
+            super().render(screen)
+        super().update(deltatime)
         mouse_change = prev_coords != self.mouse_coords
         mouse_pos = tilemap.path_to_screen(self.mouse_coords)
         if self.chosen_tile != -1:
@@ -47,8 +49,10 @@ class LevelEditor(tilemap.CombatMap):
                     if not self.get_tile_attributes((x, y))[attribute]:
                         screen.blit(tint, tilemap.map_to_screen((x, y)), special_flags=pygame.BLEND_ADD)
 
-    def notify(self, event):
+    def render(self, screen):
+        pass
 
+    def notify(self, event):
         button_pressed = self.interface.notify(event)
         if button_pressed is not None:
             if button_pressed == "save":
@@ -139,4 +143,7 @@ class LevelEditor(tilemap.CombatMap):
         pass
 
     def move_camera_in_bounds(self):
+        pass
+
+    def add_players(self, entity_data):
         pass

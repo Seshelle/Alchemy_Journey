@@ -1,0 +1,115 @@
+{
+	"normal enemies":{
+		"basic":[
+			"basic",
+			"swarmling",
+			"fodder",
+			"grunt"
+		],
+		"enforcer":[
+			"soldier",
+			"scout",
+			"beast",
+			"gorer"
+		]
+	},
+	"elite enemies":{
+		"basic":[
+			"elite basic",
+			"elite swarmling"
+		]
+	},
+	"basic":{
+		"name":"Monster",
+		"appearance":"images/tile041.png",
+		"health":12,
+		"skills":[
+			"claw"
+		]
+	},
+	"elite basic":{
+		"name":"Elite",
+		"appearance":"images/tile041.png",
+		"health":30,
+		"movement":6,
+		"skills":[
+			"enhanced claw"
+		]
+	},
+	"swarmling":{
+		"name":"Swarmling",
+		"appearance":"images/tile041.png",
+		"health":2,
+		"skills":[
+			"nibble"
+		]
+	},
+	"elite swarmling":{
+		"name":"PLACEHOLDER",
+		"appearance":"images/tile041.png",
+		"health":2,
+		"movement":7,
+		"skills":[
+			"chomp"
+		]
+	},
+	"fodder":{
+		"name":"Decrepit",
+		"appearance":"images/tile041.png",
+		"health":4,
+		"skills":[
+			"punch"
+		]
+	},
+	"grunt":{
+		"name":"Servant",
+		"appearance":"images/tile041.png",
+		"health":7,
+		"skills":[
+			"bite"
+		]
+	},
+	"slinger":{
+		"name":"Slinger",
+		"appearance":"images/tile041.png",
+		"health":12,
+		"skills":[
+			"spike launch",
+			"bash"
+		]
+	},
+	"soldier":{
+		"name":"Soldier",
+		"appearance":"images/tile041.png",
+		"health":14,
+		"movement":6,
+		"skills":[
+			"sharpened claw"
+		]
+	},
+	"scout":{
+		"name":"Scout",
+		"appearance":"images/tile041.png",
+		"health":12,
+		"movement":8,
+		"skills":[
+			"sharpened claw"
+		]
+	},
+	"beast":{
+		"name":"Beast",
+		"appearance":"images/tile041.png",
+		"health":20,
+		"skills":[
+			"chomp"
+		]
+	},
+	"gorer":{
+		"name":"Gorer",
+		"appearance":"images/tile041.png",
+		"health":12,
+		"skills":[
+			"gore"
+		]
+	}
+}

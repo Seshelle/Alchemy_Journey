@@ -7,14 +7,27 @@ from random import randint
 import skill_handler
 from skill_handler import SkillKeys
 from dialogue import draw_shadowed_text
+import json
 
 
 class CharacterKeys:
     name = "name"
     team = "team"
     health = "health"
+    armor = "armor"
+    current_health = "current health"
     movement = "movement"
     skills = "skills"
+    mana = "mana"
+    current_mana = "current mana"
+
+
+class CharacterModifiers:
+    damage = "damage"
+    accuracy = "accuracy"
+    evasion = "evasion"
+    armor = "armor"
+    movement = "movement"
 
 
 class Character(entity.Entity):
@@ -37,28 +50,47 @@ class Character(entity.Entity):
         # current state of character
         self.has_move = True
         self.has_action = True
+        self.has_bonus_action = True
+        self.knocked_out = False
+        self.stabilized = False
+        self.knockout_timer = 3
         self.status_effects = []
+        self.modifiers = {}
 
         # attributes of this character
         self.name = entity_data[CharacterKeys.name]
-        self.team = entity_data[CharacterKeys.team]
+        self.team = 0
+
         self.max_health = entity_data[CharacterKeys.health]
         self.health = self.max_health
-        self.max_mana = 100
+        if CharacterKeys.team in entity_data:
+            self.team = entity_data[CharacterKeys.team]
+        if CharacterKeys.current_health in entity_data.keys():
+            self.health = entity_data[CharacterKeys.current_health]
+        if CharacterKeys.movement not in entity_data.keys():
+            entity_data[CharacterKeys.movement] = 5
+        self.max_mana = 0
+        if CharacterKeys.mana in entity_data.keys():
+            self.max_mana = entity_data[CharacterKeys.mana]
         self.mana = self.max_mana
+        if CharacterKeys.current_mana in entity_data.keys():
+            self.mana = entity_data[CharacterKeys.current_mana]
 
         # create health bar image
         # TODO: fewer magic numbers
         self.health_height = math.floor(self.health / 10 + 1) * 12
-        self.health_bar = pygame.Surface((128, self.health_height))
+        self.health_bar = pygame.Surface((128, self.health_height)).convert()
         self.health_bar.set_colorkey(pygame.Color("black"))
         self.health_color = pygame.Color("green")
-        if self.team != 0:
-            self.health_color = pygame.Color("red")
-        for col in range(self.health):
-            row = math.floor(col / 10)
-            pygame.draw.rect(self.health_bar, self.health_color, (col * 12 - row * 120, row * 12, 10, 10))
+        self.missing_health_color = pygame.Color("gray")
         self.health_bar.set_alpha(200)
+
+        # create mana bar image
+        self.mana_bar = pygame.Surface((128, 6)).convert()
+        self.mana_bar.set_colorkey(pygame.Color("black"))
+        self.mana_color = pygame.Color("blue")
+        self.mana_bar.set_alpha(200)
+        self.update_health_and_mana()
 
         # create hit chance indicator
         self.chance_image = pygame.Surface((tilemap.tile_extent[0], tilemap.tile_extent[1]))
@@ -71,14 +103,20 @@ class Character(entity.Entity):
         self.skill_interface = user_interface.UserInterface()
         self.skill_interface.set_active(False)
         self.selected_skill = None
-        self.skill_interface.add_image((0.05, 0.8, 0.1, 0.05), self.name)
-        for skill_data in entity_data[CharacterKeys.skills]:
-            self.add_skill(skill_handler.skill_list[skill_data[SkillKeys.code]](skill_data, self))
+        with open("data/skill_list.json") as skill_file:
+            skill_list = json.load(skill_file)
+            for skill_name in entity_data[CharacterKeys.skills]:
+                skill_data = skill_list[skill_name]
+                self.add_skill(skill_handler.skill_list[skill_data[SkillKeys.code]](skill_data, self))
 
     def get_data(self, key):
-        data = self.data[key]
-        for effect in self.status_effects:
-            data += effect.on_check_statistic(key)
+        data = None
+        if key in self.data.keys():
+            data = self.data[key]
+        if key in self.modifiers.keys():
+            if data is None:
+                data = 0
+            data += self.modifiers[key]
         return data
 
     def get_z(self):
@@ -101,8 +139,6 @@ class Character(entity.Entity):
                 if len(self.path) == 0:
                     # no more path nodes, snap into final position
                     self.visual_position = destination
-                    if self.ally:
-                        self.accepting_input = True
                     self.finish_move()
                 else:
                     # get next path node and move towards that now
@@ -111,13 +147,14 @@ class Character(entity.Entity):
                     # remember which direction the path node is in
                     self.prev_direction = [move[0] > 0, move[1] > 0]
             else:
+                distance = math.sqrt(distance)
                 self.prev_direction = [move[0] > 0, move[1] > 0]
                 # move at constant speed to next path node
-                self.visual_position = [self.visual_position[0] + (move[0] / math.sqrt(distance)) * deltatime / 300,
-                                        self.visual_position[1] + (move[1] / math.sqrt(distance)) * deltatime / 300]
+                self.visual_position = [self.visual_position[0] + (move[0] / distance) * deltatime / 300,
+                                        self.visual_position[1] + (move[1] / distance) * deltatime / 300]
 
     def finish_move(self):
-        pass
+        self.accepting_input = not self.knocked_out
 
     def render(self, screen, masks=None):
         screen_pos = tilemap.path_to_screen(self.visual_position)
@@ -136,14 +173,28 @@ class Character(entity.Entity):
         screen_pos = tilemap.path_to_screen(self.visual_position)
         height = self.get_height()
         screen.blit(self.health_bar, (screen_pos[0], screen_pos[1] - height - self.health_height))
+        screen.blit(self.mana_bar, (screen_pos[0], screen_pos[1] - height))
         if self.chance_image_active:
             screen.blit(self.chance_image, (screen_pos[0] + tilemap.tile_extent[0], screen_pos[1] - height))
         self.skill_interface.render(screen)
 
+    def update_health_and_mana(self):
+        self.health_bar.fill(pygame.Color("black"))
+        color = self.health_color
+        for col in range(self.max_health):
+            row = math.floor(col / 10)
+            if col >= self.health:
+                color = self.missing_health_color
+            pygame.draw.rect(self.health_bar, color, (col * 12 - row * 120, row * 12, 10, 10))
+
+        self.mana_bar.fill(pygame.Color("black"))
+        for x in range(self.mana):
+            pygame.draw.rect(self.mana_bar, self.mana_color, (7 * x, 0, 6, 6))
+
     def notify(self, event):
-        if self.has_action:
+        if self.accepting_input:
             skill_id = self.skill_interface.notify(event)
-            if skill_id is not None:
+            if skill_id is not None and self.skills[skill_id].can_use_skill():
                 self.selected_skill = self.skills[skill_id]
                 self.current_map.display_skill_info(self.selected_skill, True)
                 return True
@@ -166,13 +217,22 @@ class Character(entity.Entity):
 
     def add_skill(self, skill):
         self.skills.append(skill)
-        self.skill_interface.add_button(
-            (0.15 * len(self.skills), 0.9, 0.1, 0.05),
-            skill.get_data(SkillKeys.name),
+        self.skill_interface.add_image_button(
+            (0.05 * (len(self.skills) + 5), 0.87),
+            None,
             len(self.skills) - 1,
-            True,
-            skill.get_data(SkillKeys.description)
+            skill.get_data(SkillKeys.description),
+            "images/icons/skill_icon.png"
         )
+
+    def add_to_modifier(self, mod_name, amount):
+        if mod_name in self.modifiers.keys():
+            self.modifiers[mod_name] += amount
+        else:
+            self.set_modifier(mod_name, amount)
+
+    def set_modifier(self, mod_name, amount):
+        self.modifiers[mod_name] = amount
 
     def get_selected_skill(self):
         if self.ally:
@@ -184,29 +244,25 @@ class Character(entity.Entity):
         return False
 
     def start_of_round_update(self):
-        self.has_move = True
-        self.has_action = True
-        self.accepting_input = self.ally
-        for effect in self.status_effects:
-            effect.on_start_turn()
-        self.effect_cleanup()
+        if not self.knocked_out:
+            self.has_move = True
+            self.has_action = True
+            self.accepting_input = True
+            for effect in self.status_effects:
+                effect.on_start_turn()
+            self.effect_cleanup()
 
     def end_of_round_update(self):
         self.accepting_input = False
         self.chance_image_active = False
-        for effect in self.status_effects:
-            effect.on_end_turn()
+        if not self.knocked_out:
+            for effect in self.status_effects:
+                effect.on_end_turn()
+        elif not self.stabilized:
+            self.knockout_timer -= 1
+            if self.knockout_timer <= 0:
+                self.current_map.fail_scene()
         self.effect_cleanup()
-
-    def effect_cleanup(self):
-        found = True
-        while found:
-            found = False
-            for i, o in enumerate(self.status_effects):
-                if o.delete:
-                    del self.status_effects[i]
-                    found = True
-                    break
 
     def commit_move(self, path):
         if self.has_move and len(path) > 1:
@@ -227,18 +283,27 @@ class Character(entity.Entity):
         self.has_move = False
         self.accepting_input = False
 
+    def use_bonus_action(self):
+        if self.has_bonus_action:
+            self.has_bonus_action = False
+        else:
+            self.use_action()
+
     def display_hit(self, skill):
+        # TODO: make a more robust system for predicting hit chance
         hit_chance = skill.get_data("accuracy")
-        if hit_chance > 100:
-            hit_chance = 100
-        elif hit_chance < 0:
-            hit_chance = 0
-        self.chance_image.fill((0, 0, 0))
-        self.chance_image_active = True
-        draw_shadowed_text(self.chance_image, str(hit_chance) + "%", pygame.Color("white"),
-                           (0, 0, tilemap.tile_extent[0], tilemap.tile_extent[1]), self.font)
+        if hit_chance is not None:
+            if hit_chance > 100:
+                hit_chance = 100
+            elif hit_chance < 0:
+                hit_chance = 0
+            self.chance_image.fill((0, 0, 0))
+            self.chance_image_active = True
+            draw_shadowed_text(self.chance_image, str(hit_chance) + "%", pygame.Color("white"),
+                               (0, 0, tilemap.tile_extent[0], tilemap.tile_extent[1]), self.font)
 
     def reset_display(self):
+        self.update_health_and_mana()
         self.chance_image_active = False
 
     def clear_hit(self):
@@ -247,11 +312,17 @@ class Character(entity.Entity):
     def use_skill(self, tile_pos):
         # if skill is successfully used, returns True
         if self.selected_skill is not None:
-            return self.selected_skill.exec_skill(tile_pos)
+            result = self.selected_skill.exec_skill(tile_pos)
+            self.update_health_and_mana()
+            return result
         return False
 
     def roll_to_hit(self, accuracy):
-        if randint(0, 99) < accuracy:
+        evasion = randint(0, 99)
+        bonus_evasion = self.get_data(CharacterModifiers.evasion)
+        if bonus_evasion is not None:
+            evasion += bonus_evasion
+        if accuracy is None or evasion < accuracy:
             for effect in self.status_effects:
                 effect.on_self_hit()
             return True
@@ -264,22 +335,63 @@ class Character(entity.Entity):
             return True
         return False
 
-    def damage(self, amount):
-        self.health -= amount
-        if self.health <= 0:
+    def damage(self, amount, tags):
+        armor = self.get_data(CharacterKeys.armor)
+        if armor is not None:
+            amount -= armor
+        if amount > 0:
+            self.health -= amount
+            if self.health <= 0:
+                self.knockout()
+            self.update_health_and_mana()
+
+    def knockout(self):
+        self.health = 0
+        self.knocked_out = True
+        self.accepting_input = False
+        self.selected_skill = None
+        self.status_effects.clear()
+        if not self.ally:
             self.delete = True
             self.current_map.remove_entities()
-        # gray out removed health
-        for col in range(self.max_health - 1, self.health - 1, -1):
-            row = math.floor(col / 10)
-            pygame.draw.rect(self.health_bar, pygame.Color("gray"), (col * 12 - row * 120, row * 12, 10, 10))
+
+    def stabilize(self):
+        self.stabilized = True
+
+    def heal(self, amount):
+        if amount > 0:
+            self.health += amount
+            if self.health > self.max_health:
+                self.health = self.max_health
+            self.update_health_and_mana()
+
+    def add_mana(self, amount):
+        self.mana += amount
+        if self.mana > self.max_mana:
+            self.mana = self.max_mana
+        if self.mana < 0:
+            self.mana = 0
 
     def add_status_effect(self, effect):
-        for effect in self.status_effects:
-            if not effect.on_add_status_effect(effect):
+        for current_effect in self.status_effects:
+            if not current_effect.on_add_status_effect(effect):
                 return False
+        effect.on_add()
         self.status_effects.append(effect)
+        if effect.visible:
+            effect_rect = (0.002 + 0.01 * len(self.status_effects), 0.86, 0.02, 0.04)
+            self.skill_interface.add_image_button(effect_rect, None, effect.name, effect.description, effect.icon, False)
         return True
+
+    def effect_cleanup(self):
+        found = True
+        while found:
+            found = False
+            for index, effect in enumerate(self.status_effects):
+                if effect.delete:
+                    del self.status_effects[index]
+                    found = True
+                    break
 
     def is_moving(self):
         return len(self.path) > 0
@@ -292,6 +404,11 @@ class AICharacter(Character):
         self.accepting_input = False
         self.AI_active = False
         self.manager = ai_manager
+        self.manager.add_actor(self)
+
+        self.team = 1
+        self.health_color = pygame.Color("red")
+        self.update_health_and_mana()
 
     def notify(self, event):
         return False
@@ -304,50 +421,55 @@ class AICharacter(Character):
 
     def ai_move(self):
         # get all possible move locations
+        if self.has_move:
+            all_moves = self.current_map.find_all_paths(self.position, self.get_data(CharacterKeys.movement))
+            closest_target_distance = 99999
+            closest_target = None
+            for c in self.current_map.character_list:
+                # don't move into occupied tiles
+                all_moves.discard(tuple(c.position))
+                # find closest valid enemy
+                if c.ally and not c.knocked_out:
+                    distance = tilemap.distance_between(self.position, c.position)
+                    if distance < closest_target_distance:
+                        closest_target_distance = distance
+                        closest_target = c
 
-        all_moves = self.current_map.find_all_paths(self.position, self.get_data(CharacterKeys.movement))
-        closest_target_distance = 99999
-        closest_target = None
-        for c in self.current_map.character_list:
-            # don't move into occupied tiles
-            all_moves.discard(tuple(c.position))
-            # find closest enemy
-            if c.ally:
-                distance = tilemap.distance_between(self.position, c.position)
-                if distance < closest_target_distance:
-                    closest_target_distance = distance
-                    closest_target = c
+            all_moves.add(tuple(self.position))
+            best_score = -999999
+            best_move = tuple(self.position)
+            for move in all_moves:
+                # try to get as close as possible to the closest enemy
+                move_score = -tilemap.distance_between(move, closest_target.position)
+                if move_score > best_score:
+                    best_score = move_score
+                    best_move = move
 
-        all_moves.add(tuple(self.position))
-        best_score = -999999
-        best_move = None
-        for move in all_moves:
-            # try to get as close as possible to the closest enemy
-            move_score = -tilemap.distance_between(move, closest_target.position)
-            if move_score > best_score:
-                best_score = move_score
-                best_move = move
-
-        self.commit_move(self.current_map.find_path(self.position, best_move, self.get_data(CharacterKeys.movement)))
+            path = self.current_map.find_path(self.position, best_move, self.get_data(CharacterKeys.movement))
+            self.commit_move(path)
+        else:
+            self.finish_move()
+        self.manager.next_actor(self)
 
     def finish_move(self):
         # use action
-        attack_tiles = self.current_map.find_all_paths(self.position, self.skills[0].get_data("range"), True)
-        attack_targets = []
-        for c in self.current_map.character_list:
-            if c.ally and tuple(c.position) in attack_tiles:
-                attack_targets.append(c)
+        if self.has_action:
+            attack_tiles = self.skills[0].targetable_tiles()
+            attack_targets = []
+            for c in self.current_map.character_list:
+                if c.ally and tuple(c.position) in attack_tiles:
+                    attack_targets.append(c)
 
-        if len(attack_targets) > 0:
-            # self.skills[0].use_on_entity(attack_targets[0])
-            self.skills[0].exec_skill(attack_targets[0].position)
-
-        self.manager.next_actor(self)
+            if len(attack_targets) > 0:
+                # self.skills[0].use_on_entity(attack_targets[0])
+                self.skills[0].exec_skill(attack_targets[0].position)
+        self.manager.actor_finished()
 
     def end_of_round_update(self):
         self.AI_active = True
         for effect in self.status_effects:
             effect.on_start_turn()
+        self.effect_cleanup()
 
     def start_of_round_update(self):
         self.AI_active = False
@@ -355,3 +477,4 @@ class AICharacter(Character):
         self.has_action = True
         for effect in self.status_effects:
             effect.on_end_turn()
+        self.effect_cleanup()

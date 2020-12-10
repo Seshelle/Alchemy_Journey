@@ -9,9 +9,13 @@ class AIManager:
         new_actor.set_manager(self)
         self.actors.append(new_actor)
 
-    def next_actor(self, actor):
+    def next_priority(self):
         self.current_actor += 1
-        self.start_ai_turn()
+        if self.current_actor >= len(self.actors):
+            self.current_actor = 0
+            self.end_ai_turn()
+        else:
+            self.actors[self.current_actor].give_priority()
 
     def actor_finished(self):
         self.finished_actors += 1
@@ -24,8 +28,9 @@ class AIManager:
         self.current_map.start_turn()
 
     def start_ai_turn(self):
-        if self.current_actor < len(self.actors):
-            self.actors[self.current_actor].ai_move()
+        for actor in self.actors:
+            actor.ai_move()
+        self.actors[0].give_priority()
 
 
 """

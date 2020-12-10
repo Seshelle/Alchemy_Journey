@@ -5,12 +5,12 @@ class EffectKeys:
     code = "code"
     name = "name"
     tags = "tags"
-    description = "description"
+    description = "desc"
     icon = "icon"
     duration = "duration"
     visible = "visible"
-    stacks = "stacks"
-    amount = "amount"
+    stacks = "can stack"
+    amount = "stacks"
 
     affected_stat = "stat"
     stat_change = "change"
@@ -56,8 +56,16 @@ class StatusEffect:
             self.duration = self.data[EffectKeys.duration]
         self.age = 0
 
-    def info_string(self):
-        return "Stacks: " + self.stacks + "\nDuration: " + (self.duration - self.age)
+        self.data_override()
+
+    def data_override(self):
+        pass
+
+    def get_description(self):
+        return self.name + ":\n" + \
+               self.description + \
+               "\nStacks: " + str(self.stacks) + \
+               "\nDuration: " + str(self.duration - self.age)
 
     def mark_for_deletion(self):
         if not self.delete:
@@ -91,16 +99,15 @@ class StatusEffect:
 
     def on_start_turn(self):
         # if an effect has zero duration, it will end before the host's turn begins
-        if self.duration >= 0:
-            if self.age >= self.duration:
-                self.mark_for_deletion()
+        if 0 <= self.duration <= self.age:
+            self.mark_for_deletion()
 
     def on_end_turn(self):
-        # specifically when the character's team ends their round
-        if self.duration >= 0:
-            self.age += 1
-            if self.age >= self.duration:
-                self.mark_for_deletion()
+        # occurs when the host's team ends their round
+        # negative durations are never removed
+        self.age += 1
+        if 0 <= self.duration <= self.age:
+            self.mark_for_deletion()
 
     def on_add_status_effect(self, status_effect):
         # returns true if this effect should be appended to the character's
@@ -122,8 +129,10 @@ class StatusEffect:
 class AddModifier(StatusEffect):
     def __init__(self, host, effect_data):
         super().__init__(host, effect_data)
-        self.stat_change = effect_data[EffectKeys.stat_change]
-        self.affected_stat = effect_data[EffectKeys.affected_stat]
+        if EffectKeys.stat_change in effect_data.keys():
+            self.stat_change = effect_data[EffectKeys.stat_change]
+        if EffectKeys.affected_stat in effect_data.keys():
+            self.affected_stat = effect_data[EffectKeys.affected_stat]
 
     def on_add(self):
         self.host.add_to_modifier(self.affected_stat, self.stat_change * self.stacks)
@@ -132,6 +141,7 @@ class AddModifier(StatusEffect):
         self.host.add_to_modifier(self.affected_stat, -self.stat_change * self.stacks)
 
     def add_stacks(self, amount):
+        super().add_stacks(amount)
         self.host.add_to_modifier(self.affected_stat, self.stat_change * amount)
 
 
@@ -144,16 +154,20 @@ def effect(f):
 
 @effect
 class Stun(StatusEffect):
+    def data_override(self):
+        self.name = "Stun"
+        self.description = "Stunned: Cannot take any action."
+
     def on_start_turn(self):
         super().on_start_turn()
         self.host.has_action = False
+        self.host.has_bonus_action = False
         self.host.has_move = False
 
 
 @effect
-class Immobilize(AddModifier):
-    def __init__(self, host, effect_data):
-        super().__init__(host, effect_data)
+class Immobilize(StatusEffect):
+    def data_override(self):
         self.name = "Immobilize"
         self.description = "Immobilized: Cannot move"
 
@@ -169,20 +183,23 @@ class Modify(AddModifier):
 
 @effect
 class StackingPoison(StatusEffect):
+    def data_override(self):
+        self.name = "Poison"
+        self.description = "Deals 1 damage per stack each turn. Goes down by 1 stack each turn."
+
     def on_end_turn(self):
         self.host.damage(self.stacks, ["effect", "poison"])
         self.add_stacks(-1)
 
 
 @effect
-class RandomMinorDebuff(StatusEffect):
-    def __init__(self, host, effect_data):
-        super().__init__(host, effect_data)
+class RandomMinorDebuff(AddModifier):
+    def data_override(self):
         random_effects = [
-            ("Slow", "Slowed: Movement is reduced by 1 per stack.", "movement", -1, 1),
-            ("Dazzled", "Dazzled: Accuracy is reduced by 5 per stack.", "accuracy", -5, 3),
-            ("Weak", "Weakened: Damage is reduced by 1 per stack.", "damage", -1, 1),
-            ("Exposed", "Exposed: Armor is reduced by 1 per stack", "armor", -1, 1)
+            ("Slowed", "Movement is reduced by 1 per stack.", "movement", -1, 1),
+            ("Dazzled", "Accuracy is reduced by 5% per stack.", "accuracy", -5, 3),
+            ("Weakened", "Damage is reduced by 1 per stack.", "damage", -1, 1),
+            ("Exposed", "Armor is reduced by 1 per stack", "armor", -1, 1)
         ]
         choice = random_effects[random.randint(0, len(random_effects) - 1)]
         self.name = choice[0]
@@ -191,11 +208,25 @@ class RandomMinorDebuff(StatusEffect):
         self.stat_change = choice[3]
         self.stacks = choice[4]
 
-    def on_add(self):
-        self.host.add_to_modifier(self.affected_stat, self.stat_change * self.stacks)
 
-    def on_remove(self):
-        self.host.add_to_modifier(self.affected_stat, -self.stat_change * self.stacks)
+@effect
+class Burn(StatusEffect):
+    def data_override(self):
+        self.name = "Burning"
+        self.description = "Taking damage at the end of each turn."
 
-    def add_stacks(self, amount):
-        self.host.add_to_modifier(self.affected_stat, self.stat_change * amount)
+    def on_end_turn(self):
+        super().on_end_turn()
+        self.host.damage(self.stacks)
+
+
+@effect
+class Shield(AddModifier):
+    def data_override(self):
+        self.name = "Shielded"
+        self.description = "Protected from all damage and effects."
+        self.affected_stat = "armor"
+        self.stat_change = 9999
+
+    def on_add_status_effect(self, status_effect):
+        return self.delete

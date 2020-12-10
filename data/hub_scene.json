@@ -1,6 +1,6 @@
 {
 	"map file":"data/hub_map.json",
-	"tile sheet":"images/basic_ground_tiles.png",
+	"tile sheet":"images/tiles/basic_ground_tiles.png",
 	"sheet col":8,
 	"sheet row":7,
 	"tile width":128,

@@ -1,4 +1,5 @@
 from random import randint
+from game_state import get_deltatime
 import entity
 from status_effects import EffectKeys
 from status_effects import effect_list
@@ -73,6 +74,13 @@ class Skill:
         self.cached_valid_tiles = set()
         self.cached_position = [-1, -1]
 
+        appearance = "images/icons/skill_icon.png"
+        # TODO: Get skill image file from json
+        self.appearance = pygame.image.load(appearance)
+        self.duration = 2000
+        self.age = 0
+        self.skill_location = None
+
     def get_data(self, key):
         if key in self.data.keys():
             return self.data[key]
@@ -86,6 +94,7 @@ class Skill:
 
     def exec_skill(self, tile_pos):
         if self.can_use_skill() and self.is_valid_tile(tile_pos):
+            self.skill_location = tile_pos
             self.attack_targets(tile_pos)
             if self.has_tag(SkillTags.bonus_action):
                 self.user.use_bonus_action()
@@ -112,15 +121,18 @@ class Skill:
                     return self.get_area(tile_pos)
             else:
                 potential_targets = set()
+                target_ally = self.is_buff
+                if not self.user.ally:
+                    target_ally = not target_ally
                 for e in self.current_map.character_list:
-                    if e.ally == self.is_buff and tuple(e.position) in self.targetable_tiles():
+                    if e.ally == target_ally and tuple(e.position) in self.targetable_tiles():
                         potential_targets.add((e.position[0], e.position[1]))
                         e.display_hit(self)
                 return potential_targets
         return set()
 
     def get_area(self, tile_pos):
-        return self.current_map.find_all_paths(tile_pos, self.area, True)
+        return self.current_map.find_all_paths(tile_pos, self.area, True, indirect=self.has_tag(SkillTags.indirect))
 
     def targetable_tiles(self, display=False):
         if display or self.user.position != self.cached_position:
@@ -154,20 +166,18 @@ class Skill:
                     self.attack_character(target)
 
     def target(self, tile_pos):
-        if not self.current_map.in_bounds(tile_pos, True):
-            return []
-        targets = self.current_map.get_characters_in_set(self.get_area(tile_pos))
-        return targets
+        return self.current_map.get_characters_in_set(self.get_area(tile_pos))
 
     def attack_character(self, target):
-        if target.roll_to_hit(self.accuracy):
+        if self.accuracy is None or target.roll_to_hit(self.accuracy + self.user.get_data("accuracy")):
             self.apply_effect(SkillKeys.on_hit, target)
             damage_range = self.get_data(SkillKeys.damage)
-            damage = randint(damage_range[0], damage_range[1])
-            if randint(0, 99) < self.crit_chance:
-                damage = round(damage * 1.5)
-                self.apply_effect(SkillKeys.on_crit, target)
-            target.damage(damage, self.tags)
+            if damage_range is not None:
+                damage = randint(damage_range[0], damage_range[1]) + self.user.get_data("damage")
+                if randint(0, 99) < self.crit_chance + self.user.get_data("crit"):
+                    damage = round(damage * 1.5)
+                    self.apply_effect(SkillKeys.on_crit, target)
+                target.damage(damage, self.tags)
         else:
             self.apply_effect(SkillKeys.on_miss, target)
 
@@ -176,6 +186,23 @@ class Skill:
         if effect_data is not None:
             effect = effect_list[effect_data[EffectKeys.code]](target, effect_data)
             target.add_status_effect(effect)
+
+    def update(self, deltatime):
+        if self.age < self.duration:
+            self.age += deltatime
+            return True
+        else:
+            self.age = 0
+            return False
+
+    def render(self, screen):
+        # TODO: Add multiple classes for rendering skills
+        origin = self.user.position
+        target = self.skill_location
+        difference = [target[0] - origin[0], target[1] - origin[1]]
+        location = [origin[0] + difference[0] * self.age / self.duration,
+                    origin[1] + difference[1] * self.age / self.duration]
+        screen.blit(self.appearance, tilemap.path_to_screen(location))
 
 
 class ChainedSkill(Skill):
@@ -188,14 +215,19 @@ class ChainedSkill(Skill):
             screen = pygame.display.get_surface()
             get_target = True
             while get_target:
+                pygame.time.wait(3)
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
-                        return False
-                    if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                        self.second_target = tilemap.screen_to_path(pygame.mouse.get_pos())
-                        get_target = False
-                        break
-                self.current_map.update(1)
+                        pygame.quit()
+                        quit()
+                    elif event.type == pygame.MOUSEBUTTONDOWN:
+                        if event.button == 1:
+                            self.second_target = tilemap.screen_to_path(pygame.mouse.get_pos())
+                            get_target = False
+                            break
+                        elif event.button == 3:
+                            return False
+                self.current_map.update(get_deltatime())
                 self.current_map.render(screen)
                 pygame.display.flip()
 
@@ -312,21 +344,21 @@ class Throw(ChainedSkill):
     def attack_targets(self, tile_pos):
         throw_target = self.current_map.get_characters_in_set(self.get_area(tile_pos))[0]
         if self.user.ally == throw_target.ally or throw_target.roll_to_hit(self.accuracy):
-            throw_target.position = self.second_target
-            throw_target.visual_position = self.second_target
 
-            damage_range = self.get_data(SkillKeys.damage)
+            collision_target = self.current_map.get_characters_in_set(self.get_area(self.second_target))
+            if len(collision_target) > 0:
+                damage_range = self.get_data(SkillKeys.damage)
+                collision_target = collision_target[0]
+                damage = randint(damage_range[0], damage_range[1])
+                if randint(0, 99) < self.crit_chance:
+                    damage = round(damage * 1.5)
+                collision_target.damage(damage, self.tags)
 
-            damage = randint(damage_range[0], damage_range[1])
-            if randint(0, 99) < self.crit_chance:
-                damage = round(damage * 1.5)
-            throw_target.damage(damage, self.tags)
-
-            throw_target = self.current_map.get_characters_in_set(self.get_area(self.second_target))
-            if len(throw_target) > 0:
-                throw_target = throw_target[0]
                 damage = randint(damage_range[0], damage_range[1])
                 if randint(0, 99) < self.crit_chance:
                     damage = round(damage * 1.5)
                 throw_target.damage(damage, self.tags)
+
+            throw_target.position = self.second_target
+            throw_target.visual_position = self.second_target
 

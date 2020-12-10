@@ -372,7 +372,7 @@ class TileMap:
         full_square = distance * 2 / 3
         square = distance
         distance = math.sqrt(distance)
-        if distance == 0:
+        if distance < 0.1:
             return
         direction = [move[0] > 0, move[1] > 0]
         wait_ms = 3
@@ -382,15 +382,26 @@ class TileMap:
 
         screen = pygame.display.get_surface()
         while [difference[0] > 0, difference[1] > 0] == direction:
-            pygame.event.get()
-            actual_wait = pygame.time.wait(wait_ms)
+            pygame.time.wait(wait_ms)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    quit()
+                elif event.type == pygame.KEYDOWN:
+                    key = event.key
+                    if key == pygame.K_w or key == pygame.K_a or key == pygame.K_s or \
+                            key == pygame.K_d or key == pygame.K_ESCAPE:
+                        return
+
+            deltatime = game_state.get_deltatime()
             speed_mult = abs(full_square - square) / full_square
             if speed_mult < max_speed:
                 speed_mult = max_speed
             if speed_mult > min_speed:
                 speed_mult = min_speed
-            Camera.pos[0] += move[0] * actual_wait / (speed * speed_mult)
-            Camera.pos[1] += move[1] * actual_wait / (speed * speed_mult)
+            Camera.pos[0] += move[0] * deltatime / (speed * speed_mult)
+            Camera.pos[1] += move[1] * deltatime / (speed * speed_mult)
+            self.update(deltatime)
             self.render(screen)
             pygame.display.flip()
             difference = [destination[0] - Camera.pos[0], destination[1] - Camera.pos[1]]
@@ -516,11 +527,10 @@ class CombatMap(TileMap):
 
     def populate_map(self):
         # make up an assortment of enemies to face
-        enemy_list = None
         with open("data/enemy_list.json") as enemy_file:
             enemy_list = json.load(enemy_file)
 
-        # just grab 5 random enemies from basic group for now
+        # just grab 5 random enemies from enforcer group for now
         enemy_choices = enemy_list["normal enemies"]["enforcer"]
         enemy_data = []
         for i in range(5):
@@ -749,7 +759,7 @@ class CombatMap(TileMap):
             selected = self.selected_character
             skill = None
             aimed = False
-            if selected is not None:
+            if selected is not None and selected.ally:
                 skill = selected.get_selected_skill()
                 if skill is not None:
                     aimed = "aimed" in skill.get_data("tags") or "no target" in skill.get_data("tags")
@@ -762,7 +772,8 @@ class CombatMap(TileMap):
                         if mouse_coords == c.position:
 
                             # when a valid target is clicked on while a skill is selected, try to use the skill
-                            if skill is not None and (c.ally == skill.has_tag("buff") or skill.has_tag("friendly fire")) and \
+                            if skill is not None and (
+                                    c.ally == skill.has_tag("buff") or skill.has_tag("friendly fire")) and \
                                     self.selected_character.use_skill(mouse_coords):
                                 return
 
@@ -775,7 +786,7 @@ class CombatMap(TileMap):
                             return
 
                     # move selected character to unoccupied position if able
-                    if selected is not None and selected.accepting_input and selected.commit_move(self.path):
+                    if selected is not None and selected.move_order(self.path):
                         self.clear_tinted_tiles()
                 else:
                     # center attack on clicked tile if free aiming
@@ -943,45 +954,35 @@ class CombatMap(TileMap):
         return True
 
     def find_all_paths(self, start, max_length, projectile=False, edges_only=False, indirect=False):
-        # Create start node
-        start_node = Node(None, tuple(start))
-
         # Initialize both open and closed list
-        open_list = []
+        open_list = [(start[0], start[1], 0)]
+        open_list_pos = {start[0], start[1]}
+        closed_index = 0
         closed_list = set()
         edge_list = set()
 
-        # Add the start node
-        open_list.append(start_node)
-        open_list_pos = set(start_node.position)
-
         # Loop until you find the end
-        while len(open_list) > 0:
-
-            # Get the current node
-            current_node = open_list[0]
-            current_index = 0
+        while closed_index < len(open_list):
 
             # Pop current off open list, add to closed list
-            open_list.pop(current_index)
-            open_list_pos.discard(current_node.position)
-            closed_list.add(current_node.position)
+            current_node = open_list[closed_index]
+            closed_index += 1
+            current_position = (current_node[0], current_node[1])
+            open_list_pos.discard(current_position)
+            closed_list.add(current_position)
             if edges_only:
-                edge_list.add(current_node.position)
+                edge_list.add(current_position)
 
-            if current_node.g + 1 > max_length:
+            if current_node[2] + 1 > max_length:
                 continue
 
             valid_adjacent = 0
             for new_position in [(0, -1), (0, 1), (-1, 0), (1, 0),
                                  (-1, -1), (-1, 1), (1, -1), (1, 1)]:  # Adjacent squares
 
-                g = current_node.g + 1
+                g = current_node[2] + 1
+                node_position = (current_node[0] + new_position[0], current_node[1] + new_position[1])
 
-                # Get node position
-                node_position = (current_node.position[0] + new_position[0], current_node.position[1] + new_position[1])
-
-                # node is on the closed list
                 if node_position in closed_list:
                     valid_adjacent += 1
                     continue
@@ -989,53 +990,43 @@ class CombatMap(TileMap):
                 # Make sure tile is not blocked
                 if indirect:
                     if not self.in_bounds(node_position, False, False):
+                        valid_adjacent += 1
                         continue
                 elif projectile:
-                    if not self.in_bounds(node_position, False, True):
+                    if not self.in_bounds(node_position, False, True) or not self.line_of_sight(start, node_position):
                         continue
                 else:
                     if not self.in_bounds(node_position, True):
                         continue
 
-                # test line of sight if required
-                if projectile and not self.line_of_sight(start, node_position):
-                    continue
-
                 # handle diagonal movement
                 if new_position[0] != 0 and new_position[1] != 0:
-                    g += 0.42
+                    g += 0.414
                     if g > max_length:
                         continue
                     # check if a tile is blocking diagonal movement
-                    if not projectile:
-                        if not self.in_bounds([node_position[0], current_node.position[1]], True) \
-                                or not self.in_bounds([current_node.position[0], node_position[1]], True):
-                            continue
-                    else:
-                        if not self.in_bounds([node_position[0], current_node.position[1]], False, True) \
-                                or not self.in_bounds([current_node.position[0], node_position[1]], False, True):
-                            continue
+                    if not indirect and (
+                            not self.in_bounds([node_position[0], current_node[1]], not projectile, projectile) or
+                            not self.in_bounds([current_node[0], node_position[1]], not projectile, projectile)):
+                        continue
 
-                # node is already in the open list
                 if node_position in open_list_pos:
                     valid_adjacent += 1
                     continue
 
                 # Create new node
-                new_node = Node(current_node, node_position)
-                new_node.g = g
-
-                # Append
+                new_node = (node_position[0], node_position[1], g)
                 open_list.append(new_node)
-                open_list_pos.add(new_node.position)
+                open_list_pos.add(node_position)
                 valid_adjacent += 1
-            if edges_only and valid_adjacent == 8:
-                edge_list.discard(current_node.position)
+            if edges_only and valid_adjacent >= 8:
+                edge_list.discard(current_position)
         if edges_only:
             return edge_list
         return closed_list
 
     def find_path(self, start, end, max_length):
+        end = tuple(end)
         if not self.in_bounds(end, True):
             return []
 
@@ -1043,47 +1034,37 @@ class CombatMap(TileMap):
             self.possible_paths = self.find_all_paths(start, max_length)
             self.last_path_test = start
 
-        if tuple(end) not in self.possible_paths:
+        if end not in self.possible_paths:
             return []
 
-        # Create start and end node
         start_node = Node(None, tuple(start))
-        end_node = Node(None, tuple(end))
-
-        # Initialize both open and closed list
-        open_list = []
+        open_list = {tuple(start): start_node}
         closed_list = set()
 
-        # Add the start node
-        open_list.append(start_node)
-        open_list_pos = set(start_node.position)
-
-        # Loop until you find the end
+        # Loop until finding the end
         loops = 0
         while len(open_list) > 0 and loops < 1000:
             loops += 1
 
-            # Get the current node
-            current_node = open_list[0]
-            current_index = 0
-            for index, item in enumerate(open_list):
-                if item.f < current_node.f:
-                    current_node = item
-                    current_index = index
-
-            # Pop current off open list, add to closed list
-            open_list.pop(current_index)
-            open_list_pos.discard(current_node.position)
-            closed_list.add(current_node.position)
+            # Get node closest to destination
+            current_node = next(iter(open_list.values()))
+            current_position = current_node.position
+            for key in open_list.keys():
+                if open_list[key].f < current_node.f:
+                    current_node = open_list[key]
+                    current_position = key
 
             # Found the goal
-            if current_node == end_node:
+            if current_position == end:
                 path = []
                 current = current_node
                 while current is not None:
                     path.append(current.position)
                     current = current.parent
                 return path[::-1]  # Return reversed path
+
+            open_list.pop(current_position)
+            closed_list.add(current_position)
 
             if current_node.g + 1 > max_length:
                 continue
@@ -1092,11 +1073,8 @@ class CombatMap(TileMap):
                                  (-1, -1), (-1, 1), (1, -1), (1, 1)]:  # Adjacent squares
 
                 g = current_node.g + 1
+                node_position = (current_position[0] + new_position[0], current_position[1] + new_position[1])
 
-                # Get node position
-                node_position = (current_node.position[0] + new_position[0], current_node.position[1] + new_position[1])
-
-                # node is on the closed list
                 if node_position in closed_list:
                     continue
 
@@ -1108,36 +1086,30 @@ class CombatMap(TileMap):
 
                 # handle diagonal movement
                 if new_position[0] != 0 and new_position[1] != 0:
-                    g += 0.42
+                    g += 0.414
                     if g > max_length:
                         continue
                     # check if a tile is blocking diagonal movement
-                    if not self.in_bounds([node_position[0], current_node.position[1]], True) \
-                            or not self.in_bounds([current_node.position[0], node_position[1]], True):
+                    if not self.in_bounds([node_position[0], current_position[1]], True) \
+                            or not self.in_bounds([current_position[0], node_position[1]], True):
                         continue
 
-                # multiply predicted distance to break ties and improve performance
-                h = distance_between(node_position, end) * 1.02
+                # deterministically alter predicted distance to break ties and improve performance
+                hashed = 1000 * node_position[0] + node_position[1]
+                h = distance_between(node_position, end) * (1 + hashed / 100000)
                 f = g + h
 
-                # node is already in the open list
-                if node_position in open_list_pos:
-                    for open_node in open_list:
-                        if node_position == open_node.position and g >= open_node.g:
-                            continue
+                # make sure a better path does not exist
+                if node_position in open_list.keys() and g >= open_list[node_position].g:
+                    continue
 
-                # Create new node
                 new_node = Node(current_node, node_position)
                 new_node.g = g
                 new_node.f = f
-
-                # Append
-                open_list.append(new_node)
-                open_list_pos.add(new_node.position)
+                open_list[node_position] = new_node
         return []
 
     def start_turn(self):
-        self.clear_tinted_tiles()
         for c in self.entity_list:
             c.start_of_round_update()
         self.remove_entities()

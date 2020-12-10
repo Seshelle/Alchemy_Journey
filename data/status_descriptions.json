@@ -1,0 +1,10 @@
+{
+	"immobilize":{
+		"name":"Immobilized",
+		"desc":"Cannot move"
+	},
+	"stun":{
+		"name":"Stunned",
+		"desc":"Cannot take actions."
+	}
+}

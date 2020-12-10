@@ -1,5 +1,5 @@
 import random
-
+import pygame
 
 class GameState:
     # data that is remembered between game mode changes
@@ -36,3 +36,16 @@ def add_to_attribute(data, key, value):
 
 class StoryState:
     progress = 0
+
+
+class Timer:
+    last_update = 0
+
+
+def get_deltatime():
+    runtime = pygame.time.get_ticks()
+    time = runtime - Timer.last_update
+    if time > 50:
+        time = 50
+    Timer.last_update = runtime
+    return time

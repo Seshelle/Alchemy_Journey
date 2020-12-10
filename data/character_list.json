@@ -49,7 +49,8 @@
 			"skills":[
 				"sweep",
 				"stun",
-				"throw"
+				"throw",
+				"tremor"
 			]
 		},
 		{
@@ -63,7 +64,9 @@
 			"movement":5,
 			"mana":12,
 			"skills":[
-				"heal"
+				"heal",
+				"burn",
+				"shield"
 			]
 		},
 		{

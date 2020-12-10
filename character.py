@@ -101,21 +101,27 @@ class Character(entity.Entity):
         # load skill data and display it on character interface
         self.skills = []
         self.skill_interface = user_interface.UserInterface()
+        self.skill_interface.add_image_button(
+            (0, 0.9, 0.2, 0.1),
+            entity_data[CharacterKeys.name],
+            "avatar", is_button=False
+        )
         self.skill_interface.set_active(False)
-        self.selected_skill = None
+        self.selected_skill_id = None
         with open("data/skill_list.json") as skill_file:
             skill_list = json.load(skill_file)
             for skill_name in entity_data[CharacterKeys.skills]:
                 skill_data = skill_list[skill_name]
                 self.add_skill(skill_handler.skill_list[skill_data[SkillKeys.code]](skill_data, self))
 
+        # skill animation state
+        self.active_skill = None
+
     def get_data(self, key):
-        data = None
+        data = 0
         if key in self.data.keys():
             data = self.data[key]
         if key in self.modifiers.keys():
-            if data is None:
-                data = 0
             data += self.modifiers[key]
         return data
 
@@ -153,7 +159,11 @@ class Character(entity.Entity):
                 self.visual_position = [self.visual_position[0] + (move[0] / distance) * deltatime / 300,
                                         self.visual_position[1] + (move[1] / distance) * deltatime / 300]
 
+        if self.active_skill is not None and not self.active_skill.update(deltatime):
+            self.active_skill = None
+
     def finish_move(self):
+        self.path.clear()
         self.accepting_input = not self.knocked_out
 
     def render(self, screen, masks=None):
@@ -178,6 +188,9 @@ class Character(entity.Entity):
             screen.blit(self.chance_image, (screen_pos[0] + tilemap.tile_extent[0], screen_pos[1] - height))
         self.skill_interface.render(screen)
 
+        if self.active_skill is not None:
+            self.active_skill.render(screen)
+
     def update_health_and_mana(self):
         self.health_bar.fill(pygame.Color("black"))
         color = self.health_color
@@ -192,11 +205,11 @@ class Character(entity.Entity):
             pygame.draw.rect(self.mana_bar, self.mana_color, (7 * x, 0, 6, 6))
 
     def notify(self, event):
-        if self.accepting_input:
+        if self.active_skill is None:
             skill_id = self.skill_interface.notify(event)
             if skill_id is not None and self.skills[skill_id].can_use_skill():
-                self.selected_skill = self.skills[skill_id]
-                self.current_map.display_skill_info(self.selected_skill, True)
+                self.selected_skill_id = skill_id
+                self.current_map.display_skill_info(self.get_selected_skill(), True)
                 return True
         return False
 
@@ -208,7 +221,7 @@ class Character(entity.Entity):
     def set_selected(self, selected):
         self.selected = selected
         self.skill_interface.set_active(selected)
-        self.selected_skill = None
+        self.selected_skill_id = None
         if selected:
             if self.has_move:
                 self.current_map.display_movement(self)
@@ -235,10 +248,9 @@ class Character(entity.Entity):
         self.modifiers[mod_name] = amount
 
     def get_selected_skill(self):
-        if self.ally:
-            return self.selected_skill
-        else:
+        if self.selected_skill_id is None:
             return None
+        return self.skills[self.selected_skill_id]
 
     def has_ai(self):
         return False
@@ -255,6 +267,7 @@ class Character(entity.Entity):
     def end_of_round_update(self):
         self.accepting_input = False
         self.chance_image_active = False
+        self.selected_skill_id = None
         if not self.knocked_out:
             for effect in self.status_effects:
                 effect.on_end_turn()
@@ -263,6 +276,11 @@ class Character(entity.Entity):
             if self.knockout_timer <= 0:
                 self.current_map.fail_scene()
         self.effect_cleanup()
+
+    def move_order(self, path):
+        if not self.accepting_input:
+            return False
+        return self.commit_move(path)
 
     def commit_move(self, path):
         if self.has_move and len(path) > 1:
@@ -277,7 +295,6 @@ class Character(entity.Entity):
         return False
 
     def use_action(self):
-        self.selected_skill = None
         self.current_map.clear_tinted_tiles()
         self.has_action = False
         self.has_move = False
@@ -310,19 +327,17 @@ class Character(entity.Entity):
         self.chance_image_active = False
 
     def use_skill(self, tile_pos):
-        # if skill is successfully used, returns True
-        if self.selected_skill is not None:
-            result = self.selected_skill.exec_skill(tile_pos)
+        if self.active_skill is None and self.selected_skill_id is not None \
+                and self.get_selected_skill().exec_skill(tile_pos):
             self.update_health_and_mana()
-            return result
+            self.active_skill = self.get_selected_skill()
+            self.selected_skill_id = None
+            return True
         return False
 
     def roll_to_hit(self, accuracy):
-        evasion = randint(0, 99)
-        bonus_evasion = self.get_data(CharacterModifiers.evasion)
-        if bonus_evasion is not None:
-            evasion += bonus_evasion
-        if accuracy is None or evasion < accuracy:
+        evasion = randint(0, 99) + self.get_data(CharacterModifiers.evasion)
+        if evasion < accuracy:
             for effect in self.status_effects:
                 effect.on_self_hit()
             return True
@@ -336,9 +351,7 @@ class Character(entity.Entity):
         return False
 
     def damage(self, amount, tags):
-        armor = self.get_data(CharacterKeys.armor)
-        if armor is not None:
-            amount -= armor
+        amount -= self.get_data(CharacterKeys.armor)
         if amount > 0:
             self.health -= amount
             if self.health <= 0:
@@ -349,7 +362,7 @@ class Character(entity.Entity):
         self.health = 0
         self.knocked_out = True
         self.accepting_input = False
-        self.selected_skill = None
+        self.selected_skill_id = None
         self.status_effects.clear()
         if not self.ally:
             self.delete = True
@@ -380,7 +393,7 @@ class Character(entity.Entity):
         self.status_effects.append(effect)
         if effect.visible:
             effect_rect = (0.002 + 0.01 * len(self.status_effects), 0.86, 0.02, 0.04)
-            self.skill_interface.add_image_button(effect_rect, None, effect.name, effect.description, effect.icon, False)
+            self.skill_interface.add_dynamic_description(effect_rect, effect)
         return True
 
     def effect_cleanup(self):
@@ -410,8 +423,7 @@ class AICharacter(Character):
         self.health_color = pygame.Color("red")
         self.update_health_and_mana()
 
-    def notify(self, event):
-        return False
+        self.has_priority = False
 
     def has_ai(self):
         return True
@@ -420,15 +432,14 @@ class AICharacter(Character):
         self.manager = manager
 
     def ai_move(self):
-        # get all possible move locations
+        # AI for stupid melee enemies
         if self.has_move:
             all_moves = self.current_map.find_all_paths(self.position, self.get_data(CharacterKeys.movement))
             closest_target_distance = 99999
             closest_target = None
+            # find closest party member
             for c in self.current_map.character_list:
-                # don't move into occupied tiles
                 all_moves.discard(tuple(c.position))
-                # find closest valid enemy
                 if c.ally and not c.knocked_out:
                     distance = tilemap.distance_between(self.position, c.position)
                     if distance < closest_target_distance:
@@ -439,7 +450,7 @@ class AICharacter(Character):
             best_score = -999999
             best_move = tuple(self.position)
             for move in all_moves:
-                # try to get as close as possible to the closest enemy
+                # try to get as close as possible to the closest party member
                 move_score = -tilemap.distance_between(move, closest_target.position)
                 if move_score > best_score:
                     best_score = move_score
@@ -449,21 +460,46 @@ class AICharacter(Character):
             self.commit_move(path)
         else:
             self.finish_move()
-        self.manager.next_actor(self)
 
-    def finish_move(self):
+    def update(self, deltatime):
+        super().update(deltatime)
+        # if this AI has priority and is not currently using a skill or moving it will
+        # try to use another skill. If it cannot, give priority to next AI character
+        if self.has_priority and self.active_skill is None and len(self.path) == 0:
+            self.has_priority = self.use_skills()
+            if not self.has_priority:
+                self.manager.next_priority()
+
+    def give_priority(self):
+        self.has_priority = True
+
+    def move_order(self, path):
+        return False
+
+    def use_skills(self):
         # use action
         if self.has_action:
+            self.selected_skill_id = 0
             attack_tiles = self.skills[0].targetable_tiles()
             attack_targets = []
             for c in self.current_map.character_list:
                 if c.ally and tuple(c.position) in attack_tiles:
                     attack_targets.append(c)
 
-            if len(attack_targets) > 0:
-                # self.skills[0].use_on_entity(attack_targets[0])
-                self.skills[0].exec_skill(attack_targets[0].position)
+            if len(attack_targets) > 0 and self.get_selected_skill().exec_skill(attack_targets[0].position):
+                self.active_skill = self.get_selected_skill()
+                self.current_map.move_camera_to_path(self.visual_position)
+                return True
+        return False
+
+    def finish_turn(self):
         self.manager.actor_finished()
+
+    def finish_move(self):
+        self.path.clear()
+
+    def use_skill(self, tile_pos):
+        return False
 
     def end_of_round_update(self):
         self.AI_active = True

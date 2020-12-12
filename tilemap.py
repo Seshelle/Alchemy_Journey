@@ -253,6 +253,17 @@ class TileMap:
         with open(map_data[MapKeys.map_file], 'r') as map_file:
             self.tile_list = json.load(map_file)
 
+        self.unwalkable_tiles = set()
+        self.opaque_tiles = set()
+        for i in range(self.map_width):
+            for j in range(self.map_height):
+                path = map_to_path((i, j))
+                tile = self.get_tile_attributes((i, j))
+                if not tile[TileKeys.walkable]:
+                    self.unwalkable_tiles.add(tuple(path))
+                if not tile[TileKeys.line_of_sight]:
+                    self.opaque_tiles.add(tuple(path))
+
         self.create_background()
         self.clean_bg = self.background.copy()
 
@@ -355,10 +366,12 @@ class TileMap:
         return self.get_tile_attributes(map_coords)
 
     def get_tile_attributes(self, tile_pos):
-        return self.tile_list[str(tile_pos[0]) + ',' + str(tile_pos[1])]
+        hashed = tile_pos[0] * 1000 + tile_pos[1]
+        return self.tile_list[str(hashed)]
 
     def set_tile_attributes(self, tile_pos, tile_data):
-        self.tile_list[str(tile_pos[0]) + ',' + str(tile_pos[1])] = tile_data
+        hashed = tile_pos[0] * 1000 + tile_pos[1]
+        self.tile_list[str(hashed)] = tile_data
 
     def move_camera_to_path(self, tile):
         destination = path_to_world((tile[0] - 3, tile[1] + 1))
@@ -430,17 +443,18 @@ class TileMap:
             Camera.pos[0] = x_min
 
     def in_bounds(self, coords, walkable_only, need_los=False):
-        coords = (round(coords[0]), round(coords[1]))
         # valid if: x >= y, x + y > 0, x + y < map_height, x - y < map_width * 2
         if coords[0] < abs(coords[1]) or coords[0] + coords[1] >= self.map_height \
                 or coords[0] - coords[1] >= self.map_width * 2:
             return False
-        valid = True
-        if walkable_only:
-            valid = self.get_tile_path(coords)[TileKeys.walkable]
-        if need_los:
-            valid = valid and self.get_tile_path(coords)[TileKeys.line_of_sight]
-        return valid
+        if walkable_only or need_los:
+            valid = True
+            if walkable_only:
+                valid = not (coords[0], coords[1]) in self.unwalkable_tiles
+            if valid and need_los:
+                valid = not (coords[0], coords[1]) in self.opaque_tiles
+            return valid
+        return True
 
     def z_order_sort_entities(self):
         self.entity_list.sort()
@@ -944,8 +958,8 @@ class CombatMap(TileMap):
                         open_list.add(neighbor)
         return closed_list
 
-    def line_of_sight(self, p0, p1, length=9999):
-        if distance_between(p0, p1) > length:
+    def line_of_sight(self, p0, p1, length=None):
+        if length is not None and distance_between(p0, p1) > length:
             return False
         line = supercover_line(p0, p1)
         for tile in line:
@@ -970,10 +984,10 @@ class CombatMap(TileMap):
             current_position = (current_node[0], current_node[1])
             open_list_pos.discard(current_position)
             closed_list.add(current_position)
-            if edges_only:
-                edge_list.add(current_position)
 
             if current_node[2] + 1 > max_length:
+                if edges_only:
+                    edge_list.add(current_position)
                 continue
 
             valid_adjacent = 0
@@ -983,7 +997,7 @@ class CombatMap(TileMap):
                 g = current_node[2] + 1
                 node_position = (current_node[0] + new_position[0], current_node[1] + new_position[1])
 
-                if node_position in closed_list:
+                if node_position in open_list_pos or node_position in closed_list:
                     valid_adjacent += 1
                     continue
 
@@ -1010,17 +1024,13 @@ class CombatMap(TileMap):
                             not self.in_bounds([current_node[0], node_position[1]], not projectile, projectile)):
                         continue
 
-                if node_position in open_list_pos:
-                    valid_adjacent += 1
-                    continue
-
                 # Create new node
                 new_node = (node_position[0], node_position[1], g)
                 open_list.append(new_node)
                 open_list_pos.add(node_position)
                 valid_adjacent += 1
-            if edges_only and valid_adjacent >= 8:
-                edge_list.discard(current_position)
+            if edges_only and valid_adjacent < 8:
+                edge_list.add(current_position)
         if edges_only:
             return edge_list
         return closed_list
@@ -1261,7 +1271,7 @@ class FreeMoveMap(TileMap):
 
     def try_move_player(self, move_keys, speed, no_mult=False):
         move = self.create_move(move_keys, speed, no_mult)
-        if self.in_bounds(move, True):
+        if self.in_bounds((round(move[0]), round(move[1])), True):
             self.player.position = move
             return True
         return False

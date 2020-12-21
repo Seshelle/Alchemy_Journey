@@ -21,6 +21,7 @@ class SkillKeys:
     crit_chance = "crit chance"
     mana_cost = "mana cost"
     tags = "tags"
+    sound = "sound"
 
     on_hit = "on hit effect"
     on_crit = "on crit effect"
@@ -67,6 +68,10 @@ class Skill:
         if self.has_attribute(SkillKeys.accuracy):
             self.accuracy = skill_data[SkillKeys.accuracy]
 
+        self.sound = pygame.mixer.Sound("game_sounds/defaultSound.wav")
+        if self.has_attribute(SkillKeys.sound):
+            self.sound = pygame.mixer.Sound(skill_data[SkillKeys.sound])
+
         self.tags = skill_data[SkillKeys.tags]
         self.is_buff = self.has_tag(SkillTags.buff)
         self.friendly_fire = self.has_tag(SkillTags.friendly_fire)
@@ -96,6 +101,7 @@ class Skill:
         if self.can_use_skill() and self.is_valid_tile(tile_pos):
             self.skill_location = tile_pos
             self.attack_targets(tile_pos)
+            self.sound.play()
             if self.has_tag(SkillTags.bonus_action):
                 self.user.use_bonus_action()
             elif not self.has_tag(SkillTags.free_action):

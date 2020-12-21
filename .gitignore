@@ -3,3 +3,4 @@ images/
 __pycache__/
 .idea/
 saves/
+game_sounds/

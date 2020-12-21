@@ -1,6 +1,7 @@
 {
 	"lucky bolt":{
 		"name":"Lucky Bolt",
+		"sound":"game_sounds/Lucky_BoltSound.wav",
 		"code":"Default",
 		"desc":"Shoots a bolt with high crit chance. It applies a random small debuff to its target.",
 		"tags":[
@@ -21,6 +22,7 @@
 	},
 	"magic missile":{
 		"name":"Magic Missile",
+		"sound":"game_sounds/Magic_MissileSound.wav",
 		"code":"Default",
 		"desc":"Shoots a powerful bolt into one enemy.",
 		"tags":[
@@ -35,6 +37,7 @@
 	},
 	"chaotic vortex":{
 		"name":"Chaotic Vortex",
+		"sound":"game_sounds/Chaotic_VortexSound.wav",
 		"code":"DelayedTrigger",
 		"triggered":"DefaultTrigger",
 		"trigger attributes":{
@@ -60,6 +63,7 @@
 	},
 	"dash":{
 		"name":"Dash",
+		"sound":"game_sounds/DashSound.wav",
 		"code":"MoveSkill",
 		"desc":"Use an action to move in a straight line to a new position.",
 		"range":5,
@@ -70,6 +74,7 @@
 	},
 	"harry":{
 		"name":"Harry",
+		"sound":"game_sounds/HarrySound.wav",
 		"code":"Default",
 		"desc":"Fire many bolts into an area. Targets are hit twice, applying random debuffs each time.",
 		"tags":[
@@ -120,6 +125,7 @@
 	},
 	"quick draw":{
 		"name":"Quick Draw",
+		"sound":"game_sounds/Quick_DrawSound.wav",
 		"code":"Default",
 		"desc":"A quick shot that takes no action. Useable once per turn.",
 		"tags":[
@@ -151,6 +157,7 @@
 	},
 	"sweep":{
 		"name":"Sweep",
+		"sound":"game_sounds/SweepSound.wav",
 		"code":"Sweep",
 		"desc":"Sweep your weapon across three adjacenet tiles, hitting any enemies enocunterd.",
 		"tags":[
@@ -165,6 +172,7 @@
 	},
 	"stun":{
 		"name":"Stun",
+		"sound":"game_sounds/StunSound.wav",
 		"code":"Default",
 		"desc":"Slams your weapon onto an enemy's skull, forcing it to skip its next turn.",
 		"tags":[
@@ -182,6 +190,7 @@
 	},
 	"throw":{
 		"name":"Throw",
+		"sound":"game_sounds/ThrowSound.wav",
 		"code":"Throw",
 		"desc":"YEET",
 		"tags":[
@@ -253,6 +262,7 @@
 	},
 	"burn":{
 		"name":"Burn",
+		"sound":"game_sounds/BurnSound.wav",
 		"code":"Default",
 		"desc":"Lights one enemy on fire.",
 		"tags":[
@@ -290,6 +300,7 @@
 	},
 	"claw":{
 		"name":"Claw",
+		"sound":"game_sounds/ClawSound.wav",
 		"code":"Default",
 		"desc":"Slashes a target with claws.",
 		"tags":[
@@ -302,6 +313,7 @@
 	},
 	"quick claw":{
 		"name":"Quick Claw",
+		"sound":"game_sounds/Quick_ClawSound.wav",
 		"code":"Default",
 		"desc":"Slashes a target with claws.",
 		"tags":[
@@ -315,6 +327,7 @@
 	},
 	"sharpened claw":{
 		"name":"Sharpened Claw",
+		"sound":"game_sounds/Sharpened_ClawSound.wav",
 		"code":"Default",
 		"desc":"Slashes at a foe with sharp claws.",
 		"tags":[
@@ -327,6 +340,7 @@
 	},
 	"enhanced claw":{
 		"name":"Enhanced Claw",
+		"sound":"game_sounds/Enhanced_ClawSound.wav",
 		"code":"Default",
 		"desc":"Slashes at a foe with magical claws.",
 		"tags":[
@@ -351,6 +365,7 @@
 	},
 	"punch":{
 		"name":"Punch",
+		"sound":"game_sounds/PunchSound.wav",
 		"code":"Default",
 		"desc":"Attacks a foe with fists.",
 		"tags":[
@@ -363,6 +378,7 @@
 	},
 	"bite":{
 		"name":"Bite",
+		"sound":"game_sounds/BiteSound.wav",
 		"code":"Default",
 		"desc":"Bites a foe with strong jaws.",
 		"tags":[
@@ -387,6 +403,7 @@
 	},
 	"chomp":{
 		"name":"Chomp",
+		"sound":"game_sounds/BiteSound.wav",
 		"code":"Default",
 		"desc":"Bites deep into a nearby foe.",
 		"tags":[
@@ -412,6 +429,7 @@
 	},
 	"gore":{
 		"name":"Gore",
+		"sound":"game_sounds/GoreSound.wav",
 		"code":"Default",
 		"desc":"Gores an enemy, dealing massive damage.",
 		"tags":[

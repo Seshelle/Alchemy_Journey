@@ -7,6 +7,7 @@ from code import interact
 import gc
 
 environ['SDL_VIDEO_CENTERED'] = '1'
+pygame.mixer.pre_init()
 pygame.init()
 
 screen = pygame.display.set_mode((a_settings.display_width, a_settings.display_height))

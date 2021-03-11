@@ -323,6 +323,24 @@ class TileMap:
         self.background = pygame.Surface([(self.map_width + self.border_width * 2 + 1) * tile_extent[0] * 2,
                                           (self.map_height + self.border_height * 2 + 1) * tile_extent[1]]).convert()
 
+    def default_background(self):
+        # create a background from a raw map file without using any scene data
+        max_coord = 0
+        for k in self.tile_list.keys():
+            if int(k) > max_coord:
+                max_coord = int(k)
+
+        self.map_width = round(max_coord / 1000 + 1)
+        self.map_height = max_coord % 1000 + 1
+        self.border_width = 4
+        self.border_height = 10
+        Camera.pos[0] = 0
+        Camera.pos[1] = 0
+        self.background_offset = (-self.border_width * tile_extent[0] * 2, -self.border_height * tile_extent[1])
+        self.background = pygame.Surface([(self.map_width + self.border_width * 2 + 1) * tile_extent[0] * 2,
+                                          (self.map_height + self.border_height * 2 + 1) * tile_extent[
+                                              1]]).convert()
+
     def create_background(self):
         # create a grayed out border image
         border_image = self.ground_tiles[14].copy()
@@ -375,6 +393,9 @@ class TileMap:
 
     def move_camera_to_path(self, tile):
         destination = path_to_world((tile[0] - 3, tile[1] + 1))
+        self.move_camera_to_world([destination[0], destination[1]])
+
+    def move_camera_to_world(self, destination):
         destination[0] += self.background_offset[0]
         destination[0] *= -1
         destination[1] += self.background_offset[1]
@@ -477,13 +498,6 @@ class CombatMap(TileMap):
         map_data = json.load(f)
         f.close()
 
-        if MapKeys.scene in map_data.keys():
-            self.scene = scenes[map_data[MapKeys.scene]](self)
-            self.has_scene = True
-        else:
-            self.scene = None
-            self.has_scene = False
-
         # keep track of when to update display
         self.tint_layer_update = False
         self.skill_display_update = False
@@ -537,7 +551,19 @@ class CombatMap(TileMap):
         if "enemy spawn area" in map_data.keys():
             self.enemy_spawn_area = map_data["enemy spawn area"]
             self.populate_map()
-            self.add_players(game_state.GameState.player_characters)
+        elif MapKeys.characters in map_data.keys():
+            self.add_entities(map_data[MapKeys.characters])
+            game_state.GameState.player_characters.clear()
+            with open("data/character_list.json") as char_file:
+                char_data = json.load(char_file)["characters"]
+                for name in map_data["players"]:
+                    game_state.GameState.player_characters[name] = char_data[name]
+
+        self.add_players(game_state.GameState.player_characters)
+        if MapKeys.scene in map_data.keys():
+            self.scene = scenes[map_data[MapKeys.scene]](self)
+        else:
+            self.scene = scenes["Empty"](self)
 
     def populate_map(self):
         # make up an assortment of enemies to face
@@ -554,11 +580,10 @@ class CombatMap(TileMap):
         self.add_entities(enemy_data)
 
     def update(self, deltatime):
-        if self.has_scene:
-            self.scene.update(deltatime)
+        self.scene.update(deltatime)
 
         # move camera in response to key presses
-        if not self.has_scene or self.scene.get_allow_input():
+        if self.scene.get_allow_input():
             keys = pygame.key.get_pressed()
             if keys[pygame.K_w]:
                 Camera.pos[1] += deltatime * Camera.speed
@@ -599,9 +624,7 @@ class CombatMap(TileMap):
             self.display_skill_info(self.selected_character.get_selected_skill())
         self.skill_display_update = False
         self.draw_all_entities(screen)
-
-        if self.has_scene:
-            self.scene.render(screen)
+        self.scene.render(screen)
 
         for e in self.entity_list:
             if self.mouse_coords == e.position:
@@ -613,8 +636,7 @@ class CombatMap(TileMap):
 
         # draw map UI and scene UI last
         self.interface.render(screen)
-        if self.has_scene:
-            self.scene.second_render(screen)
+        self.scene.second_render(screen)
 
     def apply_tint_layer_to_bg(self, real_offset):
         if self.tint_layer_update:
@@ -731,7 +753,7 @@ class CombatMap(TileMap):
                         last_loc = loc
 
         # draw highlighted square around mouse position
-        if not self.has_scene or self.scene.get_allow_input():
+        if self.scene.get_allow_input():
             screen.blit(zoom_selection, path_to_screen(self.mouse_coords))
 
     def display_skill_info(self, skill, force_update=False):
@@ -753,7 +775,7 @@ class CombatMap(TileMap):
 
     def notify(self, event):
         # map scene gets first dibs on consuming input
-        if self.has_scene and self.scene.notify(event):
+        if self.scene.notify(event):
             return
 
         # check if map UI consumes the input
@@ -863,7 +885,10 @@ class CombatMap(TileMap):
 
     def add_entities(self, entity_data):
         for c in entity_data:
-            spawn = self.get_enemy_spawn_location()
+            if "spawn x" not in c:
+                spawn = self.get_enemy_spawn_location()
+            else:
+                spawn = [c["spawn x"], c["spawn y"]]
             new_character = character.AICharacter(spawn, self, self.ai_manager, c)
             self.character_list.append(new_character)
             self.entity_list.append(new_character)
@@ -1153,11 +1178,9 @@ class CombatMap(TileMap):
 
     def detect_victory(self):
         # let scene object handle potential alternate victory conditions
-        alternate_victory = None
-        if self.has_scene:
-            alternate_victory = self.scene.detect_victory()
-            if alternate_victory is not None:
-                return alternate_victory
+        alternate_victory = self.scene.detect_victory()
+        if alternate_victory is not None:
+            return alternate_victory
         if alternate_victory is None:
             # otherwise check if there are any remaining enemies on the map
             victory = True
@@ -1181,11 +1204,9 @@ class CombatMap(TileMap):
         return self.fail_scene()
 
     def fail_scene(self):
-        failure = None
-        if self.has_scene:
-            failure = self.scene.handle_failure()
-            if failure is not None:
-                return failure
+        failure = self.scene.handle_failure()
+        if failure is not None:
+            return failure
         if failure is None:
             self.change_mode(game_modes.HubScene())
             return True
@@ -1263,10 +1284,16 @@ class FreeMoveMap(TileMap):
                 new_character = entity.NPC([c[MapKeys.spawn_x], c[MapKeys.spawn_y]], self, c)
                 self.entity_list.append(new_character)
                 self.interactive_entities.append(new_character)
-            for c in entity_data["exits"]:
-                new_exit = entity.EmbarkLocation([c[MapKeys.spawn_x], c[MapKeys.spawn_y]], self, c)
-                self.entity_list.append(new_exit)
-                self.interactive_entities.append(new_exit)
+            for c in entity_data["menus"]:
+                new_exit = None
+                menu_type = c["type"]
+                if menu_type == "embark":
+                    new_exit = entity.EmbarkLocation([c[MapKeys.spawn_x], c[MapKeys.spawn_y]], self, c)
+                elif menu_type == "equip":
+                    new_exit = None
+                if new_exit is not None:
+                    self.entity_list.append(new_exit)
+                    self.interactive_entities.append(new_exit)
         self.z_order_sort_entities()
 
     def try_move_player(self, move_keys, speed, no_mult=False):

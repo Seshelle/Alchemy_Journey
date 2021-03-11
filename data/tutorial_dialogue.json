@@ -1,14 +1,17 @@
 {
-	"lines":[
-		{"speaker":"Malcom", 
-		"text":"There it is. That's the stuff."},
-		
-		{"speaker":"Luke",
-		"text":"I always feel like we're doing something wrong when we sneak around like this."},
-		
-		{"speaker":"Malcom",
-		"text":"It's not stealing if it's owned by criminals."},
-		
-		{"break":"stealing"}
+	"lines":[{
+		"speaker":"Amelia",
+		"portrait": "amelia_portrait",
+		"text":"You see someone?"
+		},{
+		"speaker":"Marcus",
+		"portrait": "marcus_portrait",
+		"camera x": 12,
+		"camera y": 0,
+		"text":"Yeah, that guy over there."
+		},{
+		"text":"Theodore"},
+
+		{"break":"scene"}
 	]
 }

@@ -52,6 +52,12 @@ def draw_shadowed_text(surface, text, color, rect, font, aa=False, bkg=None):
 
 
 class Dialogue:
+    font_size = 40
+    font_color = "white"
+    left_just = a_settings.display_width / 3
+    speech_width = a_settings.display_width * 7 / 12
+    speech_height = a_settings.display_height * 5 / 12
+    portrait_dimensions = 512
 
     def __init__(self, dialogue_file, start_active=True):
         with open(dialogue_file) as f:
@@ -59,12 +65,13 @@ class Dialogue:
 
         self.current_line = 0
         self.break_message = None
-        self.font = pygame.font.SysFont(None, 48)
+        self.font = pygame.font.SysFont(None, Dialogue.font_size)
         self.text = " "
-        self.text_color = pygame.Color("white")
+        self.text_color = pygame.Color(Dialogue.font_color)
         self.speaker = " "
-        self.speaker_color = pygame.Color("white")
-        self.speech = pygame.Surface((a_settings.display_width * 2 / 3, a_settings.display_height / 2)).convert()
+        self.speaker_color = pygame.Color(Dialogue.font_color)
+        self.speech = pygame.Surface((Dialogue.speech_width, Dialogue.speech_height)).convert()
+        self.portrait = None
 
         self.camera_set = None
 
@@ -77,7 +84,8 @@ class Dialogue:
 
     def render(self, screen):
         if self.active:
-            screen.blit(self.speech, (a_settings.display_width / 6, a_settings.display_height / 2))
+            screen.blit(self.speech, (Dialogue.left_just, a_settings.display_height / 2))
+            screen.blit(self.portrait, (0, a_settings.display_height - Dialogue.portrait_dimensions))
 
     def notify(self, event):
         if self.active and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -99,6 +107,7 @@ class Dialogue:
             # get next line of speech from file
             line = self.dialogue["lines"][self.current_line]
 
+            # move camera to chosen coordinates
             if "camera x" in line.keys():
                 self.camera_set = (line["camera x"], line["camera y"])
 
@@ -108,21 +117,26 @@ class Dialogue:
 
             if "text" in line.keys():
                 self.text = line["text"]
-                self.speech.fill(pygame.Color("brown"))
+                self.speech.fill(pygame.Color("tan"))
 
                 # if a new speaker is defined for the line, draw it to title line
                 if "speaker" in line.keys():
                     self.speaker = line["speaker"]
 
+                # display portrait of speaker if defined
+                if "portrait" in line.keys():
+                    self.portrait = pygame.image.load("images/characters/" + line["portrait"] + ".png").convert()
+                    self.portrait.set_colorkey(pygame.Color("white"))
+
                 title_height = 60
                 title_pad_top = 10
                 title_pad_left = 10
                 speech_pad_left = 20
-                draw_text(self.speech, self.speaker, pygame.Color("white"),
+                draw_text(self.speech, self.speaker, pygame.Color(Dialogue.font_color),
                           (title_pad_left, title_pad_top,
                            self.speech.get_width(), title_height),
                           self.font, True)
-                draw_text(self.speech, self.text, pygame.Color("white"),
+                draw_text(self.speech, self.text, pygame.Color(Dialogue.font_color),
                           (speech_pad_left, title_height,
                            self.speech.get_width() - speech_pad_left * 2, self.speech.get_height() - title_height),
                           self.font, True)

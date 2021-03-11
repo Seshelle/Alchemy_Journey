@@ -82,7 +82,7 @@ class Skill:
         appearance = "images/icons/skill_icon.png"
         # TODO: Get skill image file from json
         self.appearance = pygame.image.load(appearance)
-        self.duration = 2000
+        self.duration = 100
         self.age = 0
         self.skill_location = None
 
@@ -300,6 +300,8 @@ class MoveSkill(Skill):
 
     def targetable_tiles(self, display=False):
         tiles_in_range = self.current_map.find_all_paths(self.user.position, self.range, False, display)
+        for c in self.current_map.character_list:
+            tiles_in_range.discard((c.position[0], c.position[1]))
         return tiles_in_range
 
 

@@ -3,13 +3,13 @@ import tilemap
 from tilemap import TileKeys
 import json
 import user_interface
+from scenes import scenes
 
 
 class LevelEditor(tilemap.CombatMap):
     def __init__(self, filename):
         super().__init__(filename)
-        self.scene = None
-        self.has_scene = False
+        self.scene = scenes["Empty"](self)
         self.interface.set_button_active("end turn", False)
         self.interface.add_image_button((0.9, 0.95, 0.1, 0.05), "Save", "save")
         self.interface.add_image_button((0.75, 0.95, 0.1, 0.05), "Load", "load")
@@ -119,11 +119,9 @@ class LevelEditor(tilemap.CombatMap):
     def load_map(self):
         filename = user_interface.get_text_input(pygame.display.get_surface())
         if filename is not None:
-            with open("data/" + filename + ".json", 'r') as scene_file:
-                scene = json.load(scene_file)
-                with open(scene["map file"]) as tiles:
-                    self.tile_list = json.load(tiles)
-                self.setup_background(scene)
+            with open("data/" + filename + ".json", 'r') as map_file:
+                self.tile_list = json.load(map_file)
+                self.default_background()
                 self.create_background()
 
     def edit_tile(self):

@@ -47,12 +47,17 @@ class Tutorial(Scene):
         super().__init__(current_map)
         self.block_input = True
         self.dialogue = dialogue.Dialogue("data/tutorial_dialogue.json")
+        self.current_map.interface.set_button_active("end turn", False)
 
     def update(self, deltatime):
+        self.dialogue.update(deltatime)
+        if self.block_input and not self.dialogue.active:
+            self.current_map.interface.set_button_active("end turn", True)
         self.block_input = self.dialogue.active
         if self.dialogue.camera_set is not None:
-            self.current_map.move_camera_to_path(self.dialogue.camera_set)
+            camera_pos = self.dialogue.camera_set
             self.dialogue.camera_set = None
+            self.current_map.move_camera_to_path(camera_pos)
 
     def notify(self, event):
         self.dialogue.notify(event)

@@ -202,7 +202,7 @@ class EmbarkInterface(UserInterface):
         self.char_height = 0.15
         with open("data/character_list.json") as char_file:
             self.char_data = json.load(char_file)["characters"]
-            for i, c in enumerate(self.char_data):
+            for i, c in enumerate(self.char_data.values()):
                 char_name = c["name"]
                 self.free_characters[char_name] = c
                 self.add_image_button(

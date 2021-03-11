@@ -22,8 +22,9 @@
 			"dialogue":"data/dialogue_test.json"
 		}
 	],
-	"exits":[
+	"menus":[
 		{
+			"type":"embark",
 			"spawn x":5,
 			"spawn y":-3,
 			"appearance":"images/tile039.png",

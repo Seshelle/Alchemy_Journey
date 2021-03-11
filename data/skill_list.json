@@ -378,7 +378,6 @@
 	},
 	"bite":{
 		"name":"Bite",
-		"sound":"game_sounds/BiteSound.wav",
 		"code":"Default",
 		"desc":"Bites a foe with strong jaws.",
 		"tags":[
@@ -403,7 +402,6 @@
 	},
 	"chomp":{
 		"name":"Chomp",
-		"sound":"game_sounds/BiteSound.wav",
 		"code":"Default",
 		"desc":"Bites deep into a nearby foe.",
 		"tags":[

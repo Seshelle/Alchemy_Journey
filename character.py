@@ -434,7 +434,8 @@ class AICharacter(Character):
     def ai_move(self):
         # AI for stupid melee enemies
         if self.has_move:
-            all_moves = self.current_map.find_all_paths(self.position, self.get_data(CharacterKeys.movement))
+            move = self.get_data(CharacterKeys.movement)
+            all_moves = self.current_map.find_all_paths(self.position, move)
             closest_target_distance = 99999
             closest_target = None
             # find closest party member
@@ -446,17 +447,26 @@ class AICharacter(Character):
                         closest_target_distance = distance
                         closest_target = c
 
-            all_moves.add(tuple(self.position))
-            best_score = -999999
-            best_move = tuple(self.position)
-            for move in all_moves:
-                # try to get as close as possible to the closest party member
-                move_score = -tilemap.distance_between(move, closest_target.position)
-                if move_score > best_score:
-                    best_score = move_score
-                    best_move = move
+            # find the full path to the closest party member
+            path = self.current_map.find_path(self.position, closest_target.position, 99)
+            # trim the path down to only as far as this character can move
+            if len(path) > move:
+                path_destination = path[self.get_data(CharacterKeys.movement)]
+            else:
+                path_destination = path[-1]
 
-            path = self.current_map.find_path(self.position, best_move, self.get_data(CharacterKeys.movement))
+            # if the path destination is blocked, find the next closest unblocked destination
+            if path_destination not in all_moves:
+                best_distance = 99999
+                new_destination = None
+                for pos in all_moves:
+                    distance = tilemap.distance_between(path_destination, pos)
+                    if distance < best_distance:
+                        best_distance = distance
+                        new_destination = pos
+                        if distance <= 1:
+                            break
+                path = self.current_map.find_path(self.position, new_destination, 99)
             self.commit_move(path)
         else:
             self.finish_move()
@@ -465,7 +475,7 @@ class AICharacter(Character):
         super().update(deltatime)
         # if this AI has priority and is not currently using a skill or moving it will
         # try to use another skill. If it cannot, give priority to next AI character
-        if self.has_priority and self.active_skill is None and len(self.path) == 0:
+        if self.AI_active and self.has_priority and self.active_skill is None and len(self.path) == 0:
             self.has_priority = self.use_skills()
             if not self.has_priority:
                 self.manager.next_priority()
@@ -477,7 +487,6 @@ class AICharacter(Character):
         return False
 
     def use_skills(self):
-        # use action
         if self.has_action:
             self.selected_skill_id = 0
             attack_tiles = self.skills[0].targetable_tiles()

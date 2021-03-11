@@ -1,7 +1,7 @@
 {
 	"scene":"Tutorial",
-	"map file":"data/tutorial_map.json",
-	"tile sheet":"images/basic_ground_tiles.png",
+	"map file":"data/test_map.json",
+	"tile sheet":"images/tiles/basic_ground_tiles.png",
 	"sheet col":8,
 	"sheet row":7,
 	"tile width":128,
@@ -13,6 +13,7 @@
 	"camera x":0,
 	"camera y": 0,
 	"spawn points":[[3, 0],[4, 0],[3, 1],[3, 2]],
+	"players": ["marcus", "amelia"],
 	"characters":[
 		{
 			"team":1,
@@ -20,40 +21,12 @@
 			"spawn y":0,
 			"appearance":"images/tile041.png",
 			"avatar":"images/tile041.png",
-			"name":"Enemy",
+			"name":"Theodore",
 			"height":1.5,
 			"health":10,
 			"movement":5,
 			"skills":[
-				"stab"
-			]
-		},
-		{
-			"team":1,
-			"spawn x":14,
-			"spawn y":-1,
-			"appearance":"images/tile041.png",
-			"avatar":"images/tile041.png",
-			"name":"Enemy",
-			"height":1.5,
-			"health":10,
-			"movement":5,
-			"skills":[
-				"stab"
-			]
-		},
-		{
-			"team":1,
-			"spawn x":12,
-			"spawn y":-1,
-			"appearance":"images/tile041.png",
-			"avatar":"images/tile041.png",
-			"name":"Enemy",
-			"height":1.5,
-			"health":10,
-			"movement":5,
-			"skills":[
-				"stab"
+				"claw"
 			]
 		}
 	]

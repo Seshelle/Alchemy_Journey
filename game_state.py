@@ -1,6 +1,7 @@
 import random
 import pygame
 
+
 class GameState:
     # data that is remembered between game mode changes
     expedition_seed = 0

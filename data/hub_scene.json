@@ -25,11 +25,19 @@
 	"menus":[
 		{
 			"type":"embark",
-			"spawn x":5,
+			"spawn x":7,
 			"spawn y":-3,
 			"appearance":"images/tile039.png",
 			"height":1.5,
 			"message":"E: EMBARK"
+		},
+		{
+			"type":"armory",
+			"spawn x":5,
+			"spawn y":-3,
+			"appearance":"images/tile039.png",
+			"height":1.5,
+			"message":"E: MANAGE"
 		}
 	]
 }

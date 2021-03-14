@@ -221,7 +221,6 @@ class StrategyMap:
         screen.blit(self.map_image, Camera.pos)
 
     def notify(self, event):
-        # TODO: click node to go to combat
         if event.type == pygame.MOUSEBUTTONDOWN:
             mouse_pos = pygame.mouse.get_pos()
             location = GameState.expedition_location

@@ -28,6 +28,7 @@ class CharacterModifiers:
     evasion = "evasion"
     armor = "armor"
     movement = "movement"
+    health = "health"
 
 
 class Character(entity.Entity):
@@ -307,7 +308,7 @@ class Character(entity.Entity):
             self.use_action()
 
     def display_hit(self, skill):
-        # TODO: make a more robust system for predicting hit chance
+        # TODO: make a more accurate system for predicting hit chance
         hit_chance = skill.get_data("accuracy")
         if hit_chance is not None:
             if hit_chance > 100:

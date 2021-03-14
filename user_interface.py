@@ -42,6 +42,7 @@ class ImageButton:
     def __init__(self, rect, text, button_id, hover_text=None, image_file=None, is_button=True):
         if image_file is not None:
             self.image = pygame.image.load(image_file).convert()
+            # TODO: Make image size dynamic rather than fixed
             size = self.image.get_size()
             self.rect = (rect[0], rect[1], size[0], size[1])
         else:
@@ -89,7 +90,16 @@ class ImageButton:
     def second_render(self, screen):
         mouse_pos = pygame.mouse.get_pos()
         if self.has_hover_text and self.mouse_overlap(mouse_pos):
-            screen.blit(self.hover_text_image, (mouse_pos[0], mouse_pos[1] - self.hover_size[1]))
+            hover_size = self.hover_text_image.get_size()
+            hover_placement = mouse_pos
+            if mouse_pos[1] > hover_size[1]:
+                hover_placement = (hover_placement[0], hover_placement[1] - hover_size[1])
+            else:
+                hover_placement = (hover_placement[0] + 10, hover_placement[1] + 10)
+            if mouse_pos[0] + hover_size[0] > screen.get_width():
+                hover_placement = (hover_placement[0] - hover_size[0], hover_placement[1])
+
+            screen.blit(self.hover_text_image, hover_placement)
 
     def mouse_overlap(self, mouse_pos):
         if self.is_button and self.active:
@@ -131,6 +141,9 @@ class UserInterface:
     def set_all_buttons_active(self, active=True):
         for b in self.buttons.values():
             b.set_active(active)
+
+    def delete_button(self, button_id):
+        self.buttons.pop(button_id, None)
 
     def add_image_button(self, rect, text, button_id, hover_text=None, image_file=None, is_button=True):
         if rect[0] <= 1 and rect[1] <= 1 and (len(rect) < 3 or rect[3] <= 1):
@@ -201,13 +214,12 @@ class EmbarkInterface(UserInterface):
         self.party_slots = [None, None, None, None]
         self.char_height = 0.15
         with open("data/character_list.json") as char_file:
-            self.char_data = json.load(char_file)["characters"]
+            self.char_data = json.load(char_file)
             for i, c in enumerate(self.char_data.values()):
                 char_name = c["name"]
                 self.free_characters[char_name] = c
                 self.add_image_button(
-                    (0, self.char_height * i, self.box_width,
-                     self.char_height - 0.02),
+                    (0, self.char_height * i, self.box_width, self.char_height - 0.02),
                     char_name,
                     char_name
                 )
@@ -252,4 +264,151 @@ class EmbarkInterface(UserInterface):
                         if len(self.chosen_characters) > 0:
                             start_expedition(self.chosen_characters, {}, {})
                             return game_modes.ExpeditionScene()
+                    break
         return None
+
+
+class ArmoryInterface(UserInterface):
+    def __init__(self):
+        super().__init__(False)
+
+        # set up box on left to hold character list
+        self.box_width = 0.25
+        self.character_list = []
+        self.char_height = 0.12
+        self.add_image_button((0, 0, self.box_width, 1), pygame.Color("black"), "box1", is_button=False)
+
+        # create character list on left
+        with open("data/character_list.json") as char_file:
+            self.char_data = json.load(char_file)
+        for i, c in enumerate(self.char_data.keys()):
+            self.character_list.append(c)
+            self.add_image_button(
+                (0, (self.char_height + 0.02) * i, self.box_width, self.char_height),
+                self.char_data[c]["name"], c
+            )
+
+        # create add-on display for each character adjacent to them on list
+        self.addon_width = 0.15
+        self.add_image_button((self.box_width, 0, self.addon_width, 1),
+                              pygame.Color("black"), "addbox", is_button=False)
+        count = 0
+        spacing = 0.005
+        self.addon_offset = 1000
+        for c in self.char_data.keys():
+            self.add_image_button((self.box_width + spacing, count * (self.char_height + 0.02),
+                                   self.addon_width / 2 - spacing * 2, self.char_height),
+                                  pygame.Color("yellow"), (count + 1) * self.addon_offset)
+            self.add_image_button((self.box_width + self.addon_width / 2 + spacing, count * (self.char_height + 0.02),
+                                   self.addon_width / 2 - spacing * 2, self.char_height),
+                                  pygame.Color("yellow"), (count + 1) * self.addon_offset + 1)
+            count += 1
+
+        # create skill display on top right
+        self.menu_spacing = 0.02
+        self.add_image_button((self.box_width + self.menu_spacing + self.addon_width, 0,
+                               1 - self.menu_spacing - self.box_width - self.addon_width, 0.25),
+                              pygame.Color("black"), "skillbox", is_button=False)
+
+        # populate skill display with skills from first character
+        self.skill_dimensions = 0.05
+        with open("data/skill_list.json") as skill_file:
+            self.skill_data = json.load(skill_file)
+        self.selected_character = None
+        self.skill_button_list = []
+        self.reset_skill_list(list(self.char_data.keys())[0])
+
+        # create addon inventory on right, starts hidden
+        self.working_slot = 0
+        self.inventory_buttons = ["inventorybox"]
+        self.add_image_button((self.box_width + self.menu_spacing + self.addon_width, 0,
+                               1 - self.menu_spacing - self.box_width - self.addon_width, 1),
+                              pygame.Color("black"), "inventorybox", is_button=False)
+        # create a button for each addon in player's inventory
+        with open("data/addons.json") as addon_file:
+            self.addon_data = json.load(addon_file)
+        count = 0
+        for a in self.addon_data.keys():
+            addon = self.addon_data[a]
+            if addon["count"] > 0:
+                addon_image = "images/icons/skill_icon.png"
+                addon_desc = str(a)
+                if "desc" in addon:
+                    addon_desc += "\n" + addon["desc"]
+                for mod in addon["effects"].keys():
+                    addon_desc += "\n" + mod + ": " + str(addon["effects"][mod])
+
+                self.add_image_button(
+                    (self.box_width + self.menu_spacing + self.addon_width + self.skill_dimensions * count, 0,
+                     self.skill_dimensions, self.skill_dimensions),
+                    None, a, addon_desc, addon_image)
+                self.inventory_buttons.append(a)
+                count += 1
+        for button in self.inventory_buttons:
+            self.set_button_active(button, False)
+
+    def notify(self, event):
+        button_id = None
+        if self.active and event.type == pygame.MOUSEBUTTONDOWN:
+            for button in self.buttons.values():
+                if button.is_button and button.mouse_overlap(pygame.mouse.get_pos()):
+                    button_id = button.button_id
+                    break
+        if button_id is None:
+            return None
+
+        # if the button_id is an integer, then it is an add-on slot
+        if isinstance(button_id, int):
+            if button_id >= 1000:
+                # open up inventory so player can swap the add-on in that character's add-on slot
+                slot = button_id % self.addon_offset
+                character_pos = round(button_id / self.addon_offset) - 1
+                slot += character_pos * 2
+                self.open_inventory(slot)
+        elif button_id in self.char_data.keys():
+            # select a character and show their skills
+            self.reset_skill_list(button_id)
+        elif button_id in self.addon_data.keys():
+            self.swap_addon(button_id)
+
+        print(button_id)
+        return button_id
+
+    def reset_skill_list(self, character_key):
+        self.selected_character = character_key
+        # delete all skills displayed for previously selected character
+        for button in self.skill_button_list:
+            self.delete_button(button)
+        self.skill_button_list.clear()
+
+        count = 0
+        skill_list = self.char_data[self.selected_character]["skills"]
+        # create a display of the newly selected character's skills
+        for skill in skill_list:
+            skill_image = "images/icons/skill_icon.png"
+            self.add_image_button(
+                (self.box_width + self.menu_spacing + self.addon_width + self.skill_dimensions * count, 0,
+                 self.skill_dimensions, self.skill_dimensions),
+                None, self.skill_data[skill]["name"], self.skill_data[skill]["desc"], skill_image)
+            self.skill_button_list.append(self.skill_data[skill]["name"])
+            count += 1
+
+    def set_inventory_active(self, active):
+        for button in self.inventory_buttons:
+            self.set_button_active(button, active)
+        for button in self.skill_button_list:
+            self.set_button_active(button, not active)
+
+    def open_inventory(self, slot):
+        self.working_slot = slot
+        self.reset_skill_list(self.character_list[round((slot - slot % 2) / 2)])
+        self.set_inventory_active(True)
+
+    def swap_addon(self, addon_id):
+        # copy the selected addon to the working slot
+        which_slot = "slot" + str(self.working_slot % 2)
+        self.char_data[self.selected_character]["addons"][which_slot] = self.addon_data[addon_id]
+        print(self.char_data[self.selected_character])
+        self.set_inventory_active(False)
+        # player position is: round((slot - slot % 2) / 2)
+

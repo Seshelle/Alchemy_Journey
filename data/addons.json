@@ -1,0 +1,34 @@
+{
+	"Fog Wand": {
+		"name": "Fog Wand",
+		"count": 1,
+		"appearance": "none",
+		"rarity": 1,
+		"effects": {
+			"evasion": 10,
+			"accuracy": -10
+		}
+	},
+	"Test": {
+		"name": "Test",
+		"count": 1,
+		"appearance": "none",
+		"rarity": 0,
+		"effects": {
+			"damage": 1
+		}
+	},
+	"Wombulator": {
+		"name": "Wombulator",
+		"count": 1,
+		"appearance": "none",
+		"rarity": 3,
+		"desc": "Abilities with less than 100% accuracy always miss.",
+		"effects": {
+			"accuracy": 25
+		},
+		"special": {
+			"MissOnLess": 100
+		}
+	}
+}

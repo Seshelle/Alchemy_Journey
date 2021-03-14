@@ -1289,8 +1289,8 @@ class FreeMoveMap(TileMap):
                 menu_type = c["type"]
                 if menu_type == "embark":
                     new_exit = entity.EmbarkLocation([c[MapKeys.spawn_x], c[MapKeys.spawn_y]], self, c)
-                elif menu_type == "equip":
-                    new_exit = None
+                elif menu_type == "armory":
+                    new_exit = entity.Armory([c[MapKeys.spawn_x], c[MapKeys.spawn_y]], self, c)
                 if new_exit is not None:
                     self.entity_list.append(new_exit)
                     self.interactive_entities.append(new_exit)

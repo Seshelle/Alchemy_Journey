@@ -153,25 +153,46 @@ class NPC(InteractiveEntity):
         self.dialogue.render(screen)
 
 
-class EmbarkLocation(InteractiveEntity):
+class MenuEntity(InteractiveEntity):
+    def __init__(self, position, current_map, entity_data):
+        super().__init__(position, current_map, entity_data)
+        self.inventory_interface = None
+
+    def notify(self, event):
+        if self.inventory_interface.notify(event) is False:
+            self.set_menu_active(False)
+
+    def interact(self):
+        if self.interaction_active and not self.inventory_interface.active:
+            self.set_menu_active(True)
+            return True
+        return False
+
+    def set_menu_active(self, active):
+        self.message_active = not active
+        self.inventory_interface.set_active(active)
+
+    def second_render(self, screen):
+        self.inventory_interface.render(screen)
+
+
+class EmbarkLocation(MenuEntity):
     def __init__(self, position, current_map, entity_data):
         super().__init__(position, current_map, entity_data)
         self.inventory_interface = user_interface.EmbarkInterface()
 
-    def interact(self):
-        if self.interaction_active and not self.inventory_interface.active:
-            self.message_active = False
-            self.inventory_interface.set_active(True)
-            return True
-        return False
-
     def notify(self, event):
         mode = self.inventory_interface.notify(event)
-        if mode is not None:
+        if mode is False:
+            self.set_menu_active(False)
+        elif mode is not None:
             self.current_map.change_mode(mode)
 
-    def second_render(self, screen):
-        self.inventory_interface.render(screen)
+
+class Armory(MenuEntity):
+    def __init__(self, position, current_map, entity_data):
+        super().__init__(position, current_map, entity_data)
+        self.inventory_interface = user_interface.ArmoryInterface()
 
 
 class DelayedSkill(Entity):

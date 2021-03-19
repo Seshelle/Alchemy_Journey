@@ -1,0 +1,24 @@
+{
+  "combat": {
+    "common": 75,
+    "uncommon": 20,
+    "rare": 4,
+    "very rare": 1
+  },
+  "elite": {
+    "common": 50,
+    "uncommon": 40,
+    "rare": 8,
+    "very rare": 2
+  },
+  "loot": {
+    "uncommon": 60,
+    "rare": 32,
+    "very rare": 8
+  },
+  "boss": {
+    "uncommon": 20,
+    "rare": 65,
+    "very rare": 15
+  }
+}

@@ -33,7 +33,7 @@ class MainMenu(GameMode):
         super().__init__()
         self.interface = user_interface.UserInterface()
         self.interface.add_image_button((0.4, 0.2, 0.2, 0.1), "Expedition", "expedition")
-        self.interface.add_image_button((0.4, 0.35, 0.2, 0.1), "Map", "map")
+        self.interface.add_image_button((0.4, 0.35, 0.2, 0.1), "Test", "test")
         self.interface.add_image_button((0.4, 0.5, 0.2, 0.1), "Editor", "edit")
         self.interface.add_image_button((0.4, 0.65, 0.2, 0.1), "Hub", "hub")
         self.interface.add_image_button((0.4, 0.8, 0.2, 0.1), "Quit", "quit")
@@ -48,8 +48,8 @@ class MainMenu(GameMode):
         if button_pressed is not None:
             if button_pressed == "expedition":
                 self.new_mode = ExpeditionScene()
-            elif button_pressed == "map":
-                self.new_mode = CombatScene("data/test_map_scene.json")
+            elif button_pressed == "test":
+                self.new_mode = LootScene()
             elif button_pressed == "edit":
                 self.new_mode = Editor()
             elif button_pressed == "hub":
@@ -125,3 +125,13 @@ class ExpeditionScene(MapScene):
         next_mode = self.current_map.notify(event)
         if next_mode is not None:
             self.new_mode = next_mode
+
+
+class LootScene(GameMode):
+    def __init__(self):
+        super().__init__()
+
+
+class ShopScene(GameMode):
+    def __init__(self):
+        super().__init__()

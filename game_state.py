@@ -4,7 +4,7 @@ import pygame
 
 class GameState:
     # data that is remembered between game mode changes
-    expedition_seed = 0
+    expedition_seed = random.random()
     expedition_location = [-1, -1]
     player_characters = {}
     expedition_inventory = {}

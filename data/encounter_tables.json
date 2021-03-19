@@ -1,0 +1,29 @@
+{
+  "start": {
+    "combat": 50,
+    "mystery": 5,
+    "elite": 2
+  },
+  "beginning": {
+    "combat": 50,
+    "mystery": 15,
+    "elite": 10,
+    "loot": 2,
+    "heal": 1
+  },
+  "middle": {
+    "combat": 50,
+    "elite": 10,
+    "shop": 20,
+    "loot": 10,
+    "mystery": 15,
+    "heal": 10
+  },
+  "end": {
+    "combat": 50,
+    "elite": 10,
+    "shop": 20,
+    "mystery": 5,
+    "loot": 10
+  }
+}

@@ -4,26 +4,27 @@ from tilemap import Camera
 import alchemy_settings as a_settings
 from game_state import GameState
 import game_modes
+from weighted_table import WeightedTable
 
 
 class Icon:
     size = 64
     grid_size = size * 3
     grid_variation = size
-    combat = 0
-    elite_combat = 1
-    replenish = 2
-    key = 3
-    lock = 4
-    mystery = 5
-    important = 6
+    combat = "combat"
+    elite_combat = "elite"
+    heal = "heal"
+    loot = "loot"
+    shop = "shop"
+    mystery = "mystery"
+    important = "important"
     number = 6
 
 
 class PathNode:
-    def __init__(self, grid_pos=(-1, -1), symbol=-1):
+    def __init__(self, grid_pos=(-1, -1), symbol=None):
         self.grid_pos = grid_pos
-        scatter = [random.randint(0, Icon.grid_variation), random.randint(0, Icon.grid_variation)]
+        scatter = [random.randint(0, Icon.grid_variation), random.randint(0, round(Icon.grid_variation / 2))]
         self.world_pos = (
             grid_pos[0] * Icon.grid_size + scatter[0],
             grid_pos[1] * Icon.grid_size + scatter[1]
@@ -32,6 +33,9 @@ class PathNode:
         self.next_nodes = []
         self.has_entrance = False
         self.has_exit = False
+
+    def set_encounter(self, symbol):
+        self.symbol = symbol
 
     def add_next_node(self, node):
         node.has_entrance = True
@@ -65,7 +69,7 @@ class PathNode:
         return chosen_node
 
     def mouse_overlap(self, mouse_pos):
-        if self.symbol < 0:
+        if self.symbol is None:
             return False
         screen_pos = [self.world_pos[0] + Camera.pos[0], self.world_pos[1] + Camera.pos[1]]
         if screen_pos[0] < mouse_pos[0] < screen_pos[0] + Icon.size and \
@@ -79,10 +83,10 @@ class StrategyMap:
             Icon.combat: pygame.image.load("images/icons/combat_icon.png").convert(),
             Icon.elite_combat: pygame.image.load("images/icons/elite_combat_icon.png").convert(),
             Icon.important: pygame.image.load("images/icons/important_icon.png").convert(),
-            Icon.key: pygame.image.load("images/icons/key_icon.png").convert(),
-            Icon.lock: pygame.image.load("images/icons/lock_icon.png").convert(),
+            Icon.loot: pygame.image.load("images/icons/key_icon.png").convert(),
+            Icon.shop: pygame.image.load("images/icons/lock_icon.png").convert(),
             Icon.mystery: pygame.image.load("images/icons/mystery_icon.png").convert(),
-            Icon.replenish: pygame.image.load("images/icons/replenish_icon.png").convert()
+            Icon.heal: pygame.image.load("images/icons/replenish_icon.png").convert()
         }
 
         for icon in self.map_icons.values():
@@ -110,26 +114,50 @@ class StrategyMap:
 
         # generate potential paths from seed
         random.seed(GameState.expedition_seed)
+        random.seed()
 
         # put one event node at the end
         end_pos = round(self.grid_width / 2)
         self.path_grid[end_pos][0] = PathNode((end_pos, 0), Icon.important)
+
+        # create weighted tables to pull encounters from
+        table_file = "data/encounter_tables.json"
+        start_table = WeightedTable(table_file, "start")
+        beginning_table = WeightedTable(table_file, "beginning")
+        middle_table = WeightedTable(table_file, "middle")
+        end_table = WeightedTable(table_file, "end")
+
         # put 3-5 nodes in each row and connect them to next row
         for y in range(1, self.grid_height):
 
-            # create 3 - 5 nodes in each row
+            # generate encounter nodes in each row
             free_nodes = list(range(self.grid_width))
-            for i in range(random.randint(3, 5)):
+            for i in range(random.randint(4, 5)):
                 column = random.choice(free_nodes)
                 free_nodes.remove(column)
-                self.path_grid[column][y] = PathNode((column, y), random.randint(0, Icon.number - 1))
+                # get encounter type from weighted table
+                reduction = 4
+                if y == 1:
+                    if random.random() < 0.85:
+                        encounter = "heal"
+                    else:
+                        encounter = "loot"
+                elif y <= 3:
+                    encounter = end_table.roll_reduction(reduction)
+                elif y <= 7:
+                    encounter = middle_table.roll_reduction(reduction)
+                elif y <= 10:
+                    encounter = beginning_table.roll_reduction(reduction)
+                else:
+                    encounter = start_table.roll_reduction(reduction)
+                self.path_grid[column][y] = PathNode((column, y), encounter)
 
             current_nodes = []
             next_nodes = []
             for x in range(self.grid_width):
-                if self.path_grid[x][y].symbol != -1:
+                if self.path_grid[x][y].symbol is not None:
                     current_nodes.append(self.path_grid[x][y])
-                if self.path_grid[x][y - 1].symbol != -1:
+                if self.path_grid[x][y - 1].symbol is not None:
                     next_nodes.append(self.path_grid[x][y - 1])
 
             if len(next_nodes) == 1:
@@ -137,7 +165,7 @@ class StrategyMap:
                     node.add_next_node(next_nodes[0])
                 continue
 
-            branch_chance = 0.1
+            branch_chance = 0.6
             # connect outermost nodes
             current_nodes[0].add_next_node(next_nodes[0])
             current_nodes[-1].add_next_node(next_nodes[-1])
@@ -160,9 +188,9 @@ class StrategyMap:
                     else:
                         step = -1
                     # check if there are any nodes along current row that connect to a
-                    # next node in between the planned connection points
+                    # next node between the planned connection points
                     for blocking_node in current_nodes:
-                        if node.grid_pos[0] * step < blocking_node.grid_pos[0] * step <= chosen_node.grid_pos[0] * step:
+                        if node.grid_pos[0] * step < blocking_node.grid_pos[0] * step:
                             for path in blocking_node.next_nodes:
                                 if path.grid_pos[0] * step < chosen_node.grid_pos[0] * step:
                                     blocked = True
@@ -184,6 +212,9 @@ class StrategyMap:
                     path_node.world_pos[1] + Icon.size / 3
                 ]
                 for next_node in path_node.next_nodes:
+                    # if two shops are in a row, change one of them to a normal combat encounter
+                    if path_node.symbol == "shop" and next_node.symbol == "shop":
+                        path_node.set_encounter("combat")
                     next_pos = [
                         next_node.world_pos[0] + Icon.size / 2,
                         next_node.world_pos[1] + Icon.size * 2 / 3
@@ -194,7 +225,7 @@ class StrategyMap:
         for x in range(self.grid_width):
             for y in range(self.grid_height):
                 node = self.path_grid[x][y]
-                if node.symbol >= 0:
+                if node.symbol is not None:
                     self.map_image.blit(self.map_icons[node.symbol], node.world_pos)
 
         self.change_scene = False

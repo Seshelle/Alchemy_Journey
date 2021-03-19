@@ -411,4 +411,3 @@ class ArmoryInterface(UserInterface):
         print(self.char_data[self.selected_character])
         self.set_inventory_active(False)
         # player position is: round((slot - slot % 2) / 2)
-

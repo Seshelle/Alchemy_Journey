@@ -5,13 +5,19 @@
     "rare": 4,
     "very rare": 1
   },
-  "elite": {
+  "loot": {
     "common": 50,
     "uncommon": 40,
     "rare": 8,
     "very rare": 2
   },
-  "loot": {
+  "shop": {
+    "common": 25,
+    "uncommon": 45,
+    "rare": 20,
+    "very rare": 10
+  },
+  "elite": {
     "uncommon": 60,
     "rare": 32,
     "very rare": 8

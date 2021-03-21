@@ -122,16 +122,27 @@ class ExpeditionScene(MapScene):
         self.current_map = strategy_map.StrategyMap()
 
     def notify(self, event):
+        super().notify(event)
         next_mode = self.current_map.notify(event)
         if next_mode is not None:
             self.new_mode = next_mode
 
 
 class LootScene(GameMode):
-    def __init__(self):
+    def __init__(self, level=-1):
         super().__init__()
+        self.interface = strategy_map.LootInterface(level)
+
+    def update(self, deltatime):
+        self.interface.render(self.screen)
+        super().update(deltatime)
 
 
 class ShopScene(GameMode):
-    def __init__(self):
+    def __init__(self, level=-1):
         super().__init__()
+        self.interface = strategy_map.ShopInterface(level)
+
+    def update(self, deltatime):
+        self.interface.render(self.screen)
+        super().update(deltatime)

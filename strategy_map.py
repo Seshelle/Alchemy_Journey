@@ -5,6 +5,7 @@ import alchemy_settings as a_settings
 from game_state import GameState
 import game_modes
 from weighted_table import WeightedTable
+from user_interface import UserInterface
 
 
 class Icon:
@@ -29,13 +30,13 @@ class PathNode:
             grid_pos[0] * Icon.grid_size + scatter[0],
             grid_pos[1] * Icon.grid_size + scatter[1]
         )
-        self.symbol = symbol
+        self.encounter = symbol
         self.next_nodes = []
         self.has_entrance = False
         self.has_exit = False
 
     def set_encounter(self, symbol):
-        self.symbol = symbol
+        self.encounter = symbol
 
     def add_next_node(self, node):
         node.has_entrance = True
@@ -69,7 +70,7 @@ class PathNode:
         return chosen_node
 
     def mouse_overlap(self, mouse_pos):
-        if self.symbol is None:
+        if self.encounter is None:
             return False
         screen_pos = [self.world_pos[0] + Camera.pos[0], self.world_pos[1] + Camera.pos[1]]
         if screen_pos[0] < mouse_pos[0] < screen_pos[0] + Icon.size and \
@@ -155,9 +156,9 @@ class StrategyMap:
             current_nodes = []
             next_nodes = []
             for x in range(self.grid_width):
-                if self.path_grid[x][y].symbol is not None:
+                if self.path_grid[x][y].encounter is not None:
                     current_nodes.append(self.path_grid[x][y])
-                if self.path_grid[x][y - 1].symbol is not None:
+                if self.path_grid[x][y - 1].encounter is not None:
                     next_nodes.append(self.path_grid[x][y - 1])
 
             if len(next_nodes) == 1:
@@ -213,7 +214,7 @@ class StrategyMap:
                 ]
                 for next_node in path_node.next_nodes:
                     # if two shops are in a row, change one of them to a normal combat encounter
-                    if path_node.symbol == "shop" and next_node.symbol == "shop":
+                    if path_node.encounter == "shop" and next_node.encounter == "shop":
                         path_node.set_encounter("combat")
                     next_pos = [
                         next_node.world_pos[0] + Icon.size / 2,
@@ -225,8 +226,8 @@ class StrategyMap:
         for x in range(self.grid_width):
             for y in range(self.grid_height):
                 node = self.path_grid[x][y]
-                if node.symbol is not None:
-                    self.map_image.blit(self.map_icons[node.symbol], node.world_pos)
+                if node.encounter is not None:
+                    self.map_image.blit(self.map_icons[node.encounter], node.world_pos)
 
         self.change_scene = False
         self.next_scene = None
@@ -277,6 +278,79 @@ class StrategyMap:
 
     def go_to_scene(self, grid_pos):
         GameState.expedition_location = grid_pos
-        area = self.path_grid[grid_pos[0]][grid_pos[1]]
-        return game_modes.CombatScene("data/combat_test_scene.json")
+        node = self.path_grid[grid_pos[0]][grid_pos[1]]
+        level = self.grid_height - grid_pos[1]
+        encounter = node.encounter
+        if encounter == Icon.loot:
+            return game_modes.LootScene(level)
+        else:
+            return game_modes.CombatScene("data/combat_test_scene.json")
 
+
+class LootInterface(UserInterface):
+    def __init__(self, level=-1):
+        super().__init__()
+        # if a level number is not provided, choose one randomly
+        if level < 1:
+            level = random.randint(1, 11)
+        loot = {
+            "gold": 0,
+            "research": 0,
+            "gift": 0,
+            "addons": 0
+        }
+        spawnables = list(loot.keys())
+
+        # generate loot
+        rolls = 1
+        if level >= 11:
+            rolls += 3
+        elif level >= 7:
+            rolls += 1
+
+        for i in range(rolls):
+            loot_roll = random.randint(0, 3)
+            loot[spawnables[loot_roll]] += 100 + random.randint(0, 75)
+
+        loot["addons"] = round(loot["addons"] / 100)
+        loot["gift"] = round(loot["gift"] / 100)
+
+        # display loot
+        self.add_image_button((250, 0, 200, 100), "Level: " + str(level), "level")
+        self.add_image_button((250, 100, 200, 100), "Gold: " + str(loot["gold"]), "gold")
+        self.add_image_button((250, 320, 200, 100), "Res: " + str(loot["research"]), "research")
+        self.add_image_button((250, 430, 200, 100), "Gifts: " + str(loot["gift"]), "gift")
+        self.add_image_button((250, 540, 200, 100), "addons: " + str(loot["addons"]), "addons")
+
+    def render(self, screen):
+        screen.fill(pygame.Color("black"))
+        super().render(screen)
+
+
+class ShopInterface(UserInterface):
+    def __init__(self, level):
+        super().__init__()
+        # generate wares
+        if level < 1:
+            level = random.randint(1, 11)
+
+        # roll for which addons are on sale
+        addon_wares = []
+        addon_prices = []
+        chosen_addon = "common"
+        if level > 8:
+            addon_table = WeightedTable("data/loot_tables.json", "shop")
+            chosen_addon = addon_table.roll()
+        elif random.random() < 0.5:
+            chosen_addon = "uncommon"
+
+        # determine their price based on rarity
+        addon_wares.append(chosen_addon)
+        if chosen_addon == "common":
+            addon_prices.append(random.randint(75, 110))
+        elif chosen_addon == "uncommon":
+            addon_prices.append(random.randint(165, 220))
+        elif chosen_addon == "rare":
+            addon_prices.append(random.randint(350, 450))
+        else:
+            addon_prices.append(random.randint(700, 999))

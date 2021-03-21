@@ -181,7 +181,7 @@ class Skill:
             if damage_range is not None:
                 damage = randint(damage_range[0], damage_range[1]) + self.user.get_data("damage")
                 if randint(0, 99) < self.crit_chance + self.user.get_data("crit"):
-                    damage = round(damage * 1.5)
+                    damage = damage * 2
                     self.apply_effect(SkillKeys.on_crit, target)
                 target.damage(damage, self.tags)
         else:

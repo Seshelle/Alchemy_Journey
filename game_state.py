@@ -1,5 +1,6 @@
 import random
 import pygame
+import json
 
 
 class GameState:
@@ -26,6 +27,29 @@ def update_player(player):
         saved_health = 1
     player_data["current health"] = saved_health
     player_data["current mana"] = player.mana
+
+
+def add_to_inventory(item, amount):
+    inv = GameState.expedition_inventory
+    if item in inv:
+        inv[item] += amount
+    else:
+        inv[item] = amount
+
+
+def dump_inventory():
+    # saves loot gained from an expedition to save_data
+    inv = GameState.expedition_inventory
+    with open("data/save_data.json", "w") as save_file:
+        save_data = json.load(save_file)
+        for item in inv.keys():
+            if item in save_data["currency"]:
+                save_data["currency"][item] += inv[item]
+            elif item in save_data["addons"]:
+                save_data["addons"][item] += inv[item]
+            else:
+                save_data["addons"][item] = inv[item]
+        json.dump(save_data, save_file)
 
 
 def add_to_attribute(data, key, value):

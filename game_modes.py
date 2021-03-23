@@ -122,7 +122,12 @@ class ExpeditionScene(MapScene):
         self.current_map = strategy_map.StrategyMap()
 
     def notify(self, event):
-        super().notify(event)
+        button_pressed = self.pause_menu.notify(event)
+        if button_pressed is not None:
+            if button_pressed == "quit":
+                self.new_mode = MainMenu()
+                return
+
         next_mode = self.current_map.notify(event)
         if next_mode is not None:
             self.new_mode = next_mode

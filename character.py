@@ -7,6 +7,7 @@ from random import randint
 import skill_handler
 from skill_handler import SkillKeys
 from dialogue import draw_shadowed_text
+from dialogue import draw_text
 import json
 
 
@@ -70,7 +71,7 @@ class Character(entity.Entity):
             self.health = entity_data[CharacterKeys.current_health]
         if CharacterKeys.movement not in entity_data.keys():
             entity_data[CharacterKeys.movement] = 5
-        self.max_mana = 0
+        self.max_mana = 10
         if CharacterKeys.mana in entity_data.keys():
             self.max_mana = entity_data[CharacterKeys.mana]
         self.mana = self.max_mana
@@ -78,19 +79,19 @@ class Character(entity.Entity):
             self.mana = entity_data[CharacterKeys.current_mana]
 
         # create health bar image
-        # TODO: fewer magic numbers
-        self.health_height = math.floor(self.health / 10 + 1) * 12
-        self.health_bar = pygame.Surface((128, self.health_height)).convert()
-        self.health_bar.set_colorkey(pygame.Color("black"))
+        self.stat_text = pygame.font.SysFont(None, 24)
+        self.bar_alpha = 125
+        self.bar_height = 20
+        self.bar_width = tilemap.tile_extent[0] * 2
+        self.health_bar = pygame.Surface((self.bar_width, self.bar_height)).convert()
         self.health_color = pygame.Color("green")
         self.missing_health_color = pygame.Color("gray")
-        self.health_bar.set_alpha(200)
+        self.health_bar.set_alpha(self.bar_alpha)
 
         # create mana bar image
-        self.mana_bar = pygame.Surface((128, 6)).convert()
-        self.mana_bar.set_colorkey(pygame.Color("black"))
+        self.mana_bar = pygame.Surface((self.bar_width, self.bar_height)).convert()
         self.mana_color = pygame.Color("blue")
-        self.mana_bar.set_alpha(200)
+        self.mana_bar.set_alpha(self.bar_alpha)
         self.update_health_and_mana()
 
         # create hit chance indicator
@@ -98,6 +99,13 @@ class Character(entity.Entity):
         self.chance_image.set_colorkey(pygame.Color("black"))
         self.font = pygame.font.SysFont(None, 30)
         self.chance_image_active = False
+
+        # create damage indicator
+        self.damage_indicator = pygame.Surface((self.bar_width, self.bar_height)).convert()
+        self.damage_indicator.fill(pygame.Color("purple"))
+        self.damage_indicator.set_colorkey(pygame.Color("purple"))
+        self.damage_indicator_fade = 0
+        self.damage_indicator_height = self.bar_height * 3
 
         # load skill data and display it on character interface
         self.skills = []
@@ -163,6 +171,11 @@ class Character(entity.Entity):
         if self.active_skill is not None and not self.active_skill.update(deltatime):
             self.active_skill = None
 
+        # move damage indicator up and fade it out if it is active
+        if self.damage_indicator_fade > 0:
+            self.damage_indicator_fade -= 0.25 * deltatime
+            self.damage_indicator_height += 0.05 * deltatime
+
     def finish_move(self):
         self.path.clear()
         self.accepting_input = not self.knocked_out
@@ -181,29 +194,41 @@ class Character(entity.Entity):
             self.render_with_zoom(self.appearance, screen, (screen_pos[0], screen_pos[1] - self.get_height()))
 
     def second_render(self, screen):
+        # render health and mana bars
         screen_pos = tilemap.path_to_screen(self.visual_position)
         height = self.get_height()
-        screen.blit(self.health_bar, (screen_pos[0], screen_pos[1] - height - self.health_height))
+        screen.blit(self.health_bar, (screen_pos[0], screen_pos[1] - height - self.bar_height))
         screen.blit(self.mana_bar, (screen_pos[0], screen_pos[1] - height))
         if self.chance_image_active:
             screen.blit(self.chance_image, (screen_pos[0] + tilemap.tile_extent[0], screen_pos[1] - height))
         self.skill_interface.render(screen)
 
+        # render any active damage indicators
+        if self.damage_indicator_fade > 0:
+            self.damage_indicator.set_alpha(self.damage_indicator_fade)
+            screen.blit(self.damage_indicator, (screen_pos[0], screen_pos[1] - height - self.damage_indicator_height))
+
         if self.active_skill is not None:
             self.active_skill.render(screen)
 
     def update_health_and_mana(self):
-        self.health_bar.fill(pygame.Color("black"))
-        color = self.health_color
-        for col in range(self.max_health):
-            row = math.floor(col / 10)
-            if col >= self.health:
-                color = self.missing_health_color
-            pygame.draw.rect(self.health_bar, color, (col * 12 - row * 120, row * 12, 10, 10))
+        self.health_bar.fill(self.missing_health_color)
+        bar_portion = self.bar_width * (self.health / self.max_health)
+        pygame.draw.rect(self.health_bar, self.health_color, (0, 0, bar_portion, self.bar_height))
+        draw_text(self.health_bar,
+                  str(self.health) + "/" + str(self.max_health),
+                  pygame.Color("black"),
+                  (0, 2, self.bar_width, self.bar_height),
+                  self.stat_text)
 
-        self.mana_bar.fill(pygame.Color("black"))
-        for x in range(self.mana):
-            pygame.draw.rect(self.mana_bar, self.mana_color, (7 * x, 0, 6, 6))
+        self.mana_bar.fill(self.missing_health_color)
+        bar_portion = self.bar_width * (self.mana / self.max_mana)
+        pygame.draw.rect(self.mana_bar, self.mana_color, (0, 0, bar_portion, self.bar_height))
+        draw_text(self.mana_bar,
+                  str(self.mana) + "/" + str(self.max_mana),
+                  pygame.Color("white"),
+                  (0, 2, self.bar_width, self.bar_height),
+                  self.stat_text)
 
     def notify(self, event):
         if self.active_skill is None:
@@ -307,7 +332,7 @@ class Character(entity.Entity):
         else:
             self.use_action()
 
-    def display_hit(self, skill):
+    def show_hit_chance(self, skill):
         # TODO: make a more accurate system for predicting hit chance
         hit_chance = skill.get_data("accuracy")
         if hit_chance is not None:
@@ -319,6 +344,13 @@ class Character(entity.Entity):
             self.chance_image_active = True
             draw_shadowed_text(self.chance_image, str(hit_chance) + "%", pygame.Color("white"),
                                (0, 0, tilemap.tile_extent[0], tilemap.tile_extent[1]), self.font)
+
+    def display_hit(self, to_display, color):
+        self.damage_indicator_fade = 225
+        self.damage_indicator_height = self.bar_height * 2
+        self.damage_indicator.fill(pygame.Color("purple"))
+        draw_shadowed_text(self.damage_indicator, to_display, color,
+                           (0, 0, self.bar_width, self.bar_height), self.font)
 
     def reset_display(self):
         self.update_health_and_mana()
@@ -342,6 +374,7 @@ class Character(entity.Entity):
             for effect in self.status_effects:
                 effect.on_self_hit()
             return True
+        self.display_hit("MISS", pygame.Color("white"))
         return False
 
     def roll_to_crit(self, crit_chance):
@@ -358,6 +391,15 @@ class Character(entity.Entity):
             if self.health <= 0:
                 self.knockout()
             self.update_health_and_mana()
+        self.display_hit("-" + str(amount), pygame.Color("red"))
+
+    def heal(self, amount):
+        if amount > 0:
+            self.health += amount
+            if self.health > self.max_health:
+                self.health = self.max_health
+            self.update_health_and_mana()
+        self.display_hit("+" + str(amount), pygame.Color("green"))
 
     def knockout(self):
         self.health = 0
@@ -371,13 +413,6 @@ class Character(entity.Entity):
 
     def stabilize(self):
         self.stabilized = True
-
-    def heal(self, amount):
-        if amount > 0:
-            self.health += amount
-            if self.health > self.max_health:
-                self.health = self.max_health
-            self.update_health_and_mana()
 
     def add_mana(self, amount):
         self.mana += amount
@@ -451,12 +486,19 @@ class AICharacter(Character):
             # find the full path to the closest party member
             path = self.current_map.find_path(self.position, closest_target.position, 99)
             # trim the path down to only as far as this character can move
-            if len(path) > move:
-                path_destination = path[self.get_data(CharacterKeys.movement)]
-            else:
-                path_destination = path[-1]
+            prev_space = self.position
+            trimmed_path = []
+            length = 0
+            for space in path:
+                if prev_space[0] != space[0] and prev_space[1] != space[1]:
+                    length += 1.414
+                elif prev_space[0] != space[0] or prev_space[1] != space[1]:
+                    length += 1
+                if length <= move:
+                    trimmed_path.append(space)
 
             # if the path destination is blocked, find the next closest unblocked destination
+            path_destination = trimmed_path[-1]
             if path_destination not in all_moves:
                 best_distance = 99999
                 new_destination = None
@@ -465,10 +507,9 @@ class AICharacter(Character):
                     if distance < best_distance:
                         best_distance = distance
                         new_destination = pos
-                        if distance <= 1:
-                            break
-                path = self.current_map.find_path(self.position, new_destination, 99)
-            self.commit_move(path)
+                trimmed_path = self.current_map.find_path(self.position, new_destination, 99)
+
+            self.commit_move(trimmed_path)
         else:
             self.finish_move()
 

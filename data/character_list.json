@@ -1,8 +1,6 @@
 {
 	"marcus":{
 		"name":"Marcus",
-		"team":0,
-		"unlocked":true,
 		"appearance":"images/tile041.png",
 		"avatar":"images/tile041.png",
 		"height":1.5,
@@ -16,19 +14,10 @@
 			"magic missile",
 			"harry",
 			"respite"
-		],
-		"upgrades": {
-
-		},
-		"addons":{
-			"slot0": "none",
-			"slot1": "none"
-		}
+		]
 	},
 	"amelia":{
 		"name":"Amelia",
-		"team":0,
-		"unlocked":true,
 		"appearance":"images/tile041.png",
 		"avatar":"images/tile041.png",
 		"height":1.5,
@@ -39,19 +28,10 @@
 			"power shot",
 			"quick draw",
 			"homing shot"
-		],
-		"upgrades": {
-
-		},
-		"addons":{
-			"slot0": "none",
-			"slot1": "none"
-		}
+		]
 	},
 	"bradley":{
 		"name":"Bradley",
-		"team":0,
-		"unlocked":true,
 		"appearance":"images/tile041.png",
 		"avatar":"images/tile041.png",
 		"height":1.5,
@@ -64,19 +44,10 @@
 			"stun",
 			"throw",
 			"tremor"
-		],
-		"upgrades": {
-
-		},
-		"addons":{
-			"slot0": "none",
-			"slot1": "none"
-		}
+		]
 	},
 	"genevieve":{
 		"name":"Genevieve",
-		"team":0,
-		"unlocked":true,
 		"appearance":"images/tile041.png",
 		"avatar":"images/tile041.png",
 		"height":1.5,
@@ -87,19 +58,10 @@
 			"heal",
 			"burn",
 			"shield"
-		],
-		"upgrades": {
-
-		},
-		"addons":{
-			"slot0": "none",
-			"slot1": "none"
-		}
+		]
 	},
 	"victoria":{
 		"name":"Victoria",
-		"team":0,
-		"unlocked":true,
 		"appearance":"images/tile041.png",
 		"avatar":"images/tile041.png",
 		"height":1.5,
@@ -108,13 +70,6 @@
 		"mana":12,
 		"skills":[
 
-		],
-		"upgrades": {
-
-		},
-		"addons":{
-			"slot0": "none",
-			"slot1": "none"
-		}
+		]
 	}
 }

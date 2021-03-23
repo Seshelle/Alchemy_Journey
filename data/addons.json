@@ -1,7 +1,6 @@
 {
 	"Fog Wand": {
 		"name": "Fog Wand",
-		"count": 1,
 		"appearance": "none",
 		"rarity": 1,
 		"effects": {
@@ -11,7 +10,6 @@
 	},
 	"Test": {
 		"name": "Test",
-		"count": 1,
 		"appearance": "none",
 		"rarity": 0,
 		"effects": {
@@ -20,7 +18,6 @@
 	},
 	"Wombulator": {
 		"name": "Wombulator",
-		"count": 1,
 		"appearance": "none",
 		"rarity": 3,
 		"desc": "Abilities with less than 100% accuracy always miss.",

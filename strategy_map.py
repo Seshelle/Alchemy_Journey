@@ -1,5 +1,7 @@
 import pygame
 import random
+
+import game_state
 from tilemap import Camera
 import alchemy_settings as a_settings
 from game_state import GameState
@@ -302,7 +304,7 @@ class LootInterface(UserInterface):
         spawnables = list(loot.keys())
 
         # generate loot
-        rolls = 1
+        rolls = 2
         if level >= 11:
             rolls += 3
         elif level >= 7:
@@ -321,6 +323,16 @@ class LootInterface(UserInterface):
         self.add_image_button((250, 320, 200, 100), "Res: " + str(loot["research"]), "research")
         self.add_image_button((250, 430, 200, 100), "Gifts: " + str(loot["gift"]), "gift")
         self.add_image_button((250, 540, 200, 100), "addons: " + str(loot["addons"]), "addons")
+
+        if loot["gold"] > 0:
+            game_state.add_to_inventory("gold", loot["gold"])
+        if loot["research"] > 0:
+            game_state.add_to_inventory("research", loot["research"])
+        if 0 < loot["gift"] < 4:
+            game_state.add_to_inventory("small gifts", loot["gift"])
+        else:
+            game_state.add_to_inventory("big gifts", loot["gift"] - 3)
+        # TODO: roll addons and add them to expedition inventory
 
     def render(self, screen):
         screen.fill(pygame.Color("black"))

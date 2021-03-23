@@ -1,0 +1,49 @@
+{
+	"characters": {
+		"marcus": {
+			"unlocked": true,
+			"upgrades": {
+			},
+			"slot0": "none",
+			"slot1": "none"
+		},
+		"amelia": {
+			"unlocked": true,
+			"upgrades": {
+			},
+			"slot0": "none",
+			"slot1": "none"
+		},
+		"bradley": {
+			"unlocked": true,
+			"upgrades": {
+			},
+			"slot0": "none",
+			"slot1": "none"
+		},
+		"genevieve": {
+			"unlocked": true,
+			"upgrades": {
+			},
+			"slot0": "none",
+			"slot1": "none"
+		},
+		"victoria": {
+			"unlocked": true,
+			"upgrades": {
+			},
+			"slot0": "none",
+			"slot1": "none"
+		}
+	},
+	"currency": {
+		"gold": 0,
+		"research": 0,
+		"small gifts": 0,
+		"big gifts": 0
+	},
+	"addons": {
+		"Fog Wand": 1,
+		"Wombulator": 1
+	}
+}

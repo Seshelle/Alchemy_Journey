@@ -133,7 +133,7 @@ class Skill:
                 for e in self.current_map.character_list:
                     if e.ally == target_ally and tuple(e.position) in self.targetable_tiles():
                         potential_targets.add((e.position[0], e.position[1]))
-                        e.display_hit(self)
+                        e.show_hit_chance(self)
                 return potential_targets
         return set()
 
@@ -260,6 +260,9 @@ class DelayedTrigger(Skill):
                 self.user.use_action()
                 return True
         return False
+
+    def render(self, screen):
+        pass
 
 
 @skill

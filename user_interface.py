@@ -271,6 +271,8 @@ class EmbarkInterface(UserInterface):
 class ArmoryInterface(UserInterface):
     def __init__(self):
         super().__init__(False)
+        with open("data/save_data.json", "r") as save_file:
+            self.save_data = json.load(save_file)
 
         # set up box on left to hold character list
         self.box_width = 0.25
@@ -281,12 +283,16 @@ class ArmoryInterface(UserInterface):
         # create character list on left
         with open("data/character_list.json") as char_file:
             self.char_data = json.load(char_file)
-        for i, c in enumerate(self.char_data.keys()):
+        count = 0
+        for c in self.char_data.keys():
+            if self.save_data["characters"][c]["unlocked"] is False:
+                continue
             self.character_list.append(c)
             self.add_image_button(
-                (0, (self.char_height + 0.02) * i, self.box_width, self.char_height),
+                (0, (self.char_height + 0.02) * count, self.box_width, self.char_height),
                 self.char_data[c]["name"], c
             )
+            count += 1
 
         # create add-on display for each character adjacent to them on list
         self.addon_width = 0.15
@@ -295,7 +301,7 @@ class ArmoryInterface(UserInterface):
         count = 0
         spacing = 0.005
         self.addon_offset = 1000
-        for c in self.char_data.keys():
+        for c in self.character_list:
             self.add_image_button((self.box_width + spacing, count * (self.char_height + 0.02),
                                    self.addon_width / 2 - spacing * 2, self.char_height),
                                   pygame.Color("yellow"), (count + 1) * self.addon_offset)
@@ -320,32 +326,16 @@ class ArmoryInterface(UserInterface):
 
         # create addon inventory on right, starts hidden
         self.working_slot = 0
-        self.inventory_buttons = ["inventorybox"]
         self.add_image_button((self.box_width + self.menu_spacing + self.addon_width, 0,
                                1 - self.menu_spacing - self.box_width - self.addon_width, 1),
-                              pygame.Color("black"), "inventorybox", is_button=False)
+                              pygame.Color("black"), "invbox", is_button=False)
+        self.set_button_active("invbox", False)
+
         # create a button for each addon in player's inventory
         with open("data/addons.json") as addon_file:
             self.addon_data = json.load(addon_file)
-        count = 0
-        for a in self.addon_data.keys():
-            addon = self.addon_data[a]
-            if addon["count"] > 0:
-                addon_image = "images/icons/skill_icon.png"
-                addon_desc = str(a)
-                if "desc" in addon:
-                    addon_desc += "\n" + addon["desc"]
-                for mod in addon["effects"].keys():
-                    addon_desc += "\n" + mod + ": " + str(addon["effects"][mod])
-
-                self.add_image_button(
-                    (self.box_width + self.menu_spacing + self.addon_width + self.skill_dimensions * count, 0,
-                     self.skill_dimensions, self.skill_dimensions),
-                    None, a, addon_desc, addon_image)
-                self.inventory_buttons.append(a)
-                count += 1
-        for button in self.inventory_buttons:
-            self.set_button_active(button, False)
+        self.inventory_buttons = []
+        self.reset_inventory()
 
     def notify(self, event):
         button_id = None
@@ -364,6 +354,8 @@ class ArmoryInterface(UserInterface):
                 slot = button_id % self.addon_offset
                 character_pos = round(button_id / self.addon_offset) - 1
                 slot += character_pos * 2
+                # select the character whose slot it is
+                self.reset_skill_list(self.character_list[character_pos])
                 self.open_inventory(slot)
         elif button_id in self.char_data.keys():
             # select a character and show their skills
@@ -371,7 +363,6 @@ class ArmoryInterface(UserInterface):
         elif button_id in self.addon_data.keys():
             self.swap_addon(button_id)
 
-        print(button_id)
         return button_id
 
     def reset_skill_list(self, character_key):
@@ -393,7 +384,27 @@ class ArmoryInterface(UserInterface):
             self.skill_button_list.append(self.skill_data[skill]["name"])
             count += 1
 
+    def reset_inventory(self):
+        for button in self.inventory_buttons:
+            self.delete_button(button)
+
+        count = 0
+        for a in self.save_data["addons"].keys():
+            addon = self.addon_data[a]
+            if self.save_data["addons"][a] > 0:
+                addon_image = "images/icons/skill_icon.png"
+                addon_desc = self.create_addon_desc(addon)
+                self.add_image_button(
+                    (self.box_width + self.menu_spacing + self.addon_width + self.skill_dimensions * count, 0,
+                     self.skill_dimensions, self.skill_dimensions),
+                    None, a, addon_desc, addon_image)
+                self.inventory_buttons.append(a)
+                count += 1
+        for button in self.inventory_buttons:
+            self.set_button_active(button, False)
+
     def set_inventory_active(self, active):
+        self.set_button_active("invbox", active)
         for button in self.inventory_buttons:
             self.set_button_active(button, active)
         for button in self.skill_button_list:
@@ -407,7 +418,39 @@ class ArmoryInterface(UserInterface):
     def swap_addon(self, addon_id):
         # copy the selected addon to the working slot
         which_slot = "slot" + str(self.working_slot % 2)
-        self.char_data[self.selected_character]["addons"][which_slot] = self.addon_data[addon_id]
-        print(self.char_data[self.selected_character])
+        if self.save_data["characters"][self.selected_character][which_slot] != "none":
+            prev_addon = self.save_data["characters"][self.selected_character][which_slot]
+            self.save_data["addons"][prev_addon] += 1
+        if addon_id is not None:
+            self.save_data["characters"][self.selected_character][which_slot] = self.addon_data[addon_id]
+            self.save_data["addons"][addon_id] -= 1
+        else:
+            self.save_data["characters"][self.selected_character][which_slot] = "none"
+        self.save_changes()
+        self.reset_inventory()
         self.set_inventory_active(False)
-        # player position is: round((slot - slot % 2) / 2)
+
+    def unequip_all(self):
+        for character in self.save_data["characters"].keys():
+            addon = self.save_data["characters"][character]["slot0"]
+            if addon != "none":
+                self.save_data["addons"][addon] += 1
+                self.save_data["characters"][character]["slot0"] = "none"
+            addon = self.save_data["characters"][character]["slot1"]
+            if addon != "none":
+                self.save_data["addons"][addon] += 1
+                self.save_data["characters"][character]["slot1"] = "none"
+        self.save_changes()
+        self.reset_inventory()
+
+    def save_changes(self):
+        with open("data/save_data.json", "w") as save_file:
+            json.dump(self.save_data, save_file)
+
+    def create_addon_desc(self, addon):
+        addon_desc = addon["name"]
+        if "desc" in addon:
+            addon_desc += "\n" + addon["desc"]
+        for mod in addon["effects"].keys():
+            addon_desc += "\n" + mod + ": " + str(addon["effects"][mod])
+        return addon_desc

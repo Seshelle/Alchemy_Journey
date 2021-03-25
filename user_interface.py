@@ -387,13 +387,14 @@ class ArmoryInterface(UserInterface):
     def reset_inventory(self):
         for button in self.inventory_buttons:
             self.delete_button(button)
+        self.inventory_buttons.clear()
 
         count = 0
         for a in self.save_data["addons"].keys():
-            addon = self.addon_data[a]
-            if self.save_data["addons"][a] > 0:
+            addon = self.save_data["addons"][a]
+            if addon["count"] > 0:
                 addon_image = "images/icons/skill_icon.png"
-                addon_desc = self.create_addon_desc(addon)
+                addon_desc = create_addon_desc(addon)
                 self.add_image_button(
                     (self.box_width + self.menu_spacing + self.addon_width + self.skill_dimensions * count, 0,
                      self.skill_dimensions, self.skill_dimensions),
@@ -420,10 +421,10 @@ class ArmoryInterface(UserInterface):
         which_slot = "slot" + str(self.working_slot % 2)
         if self.save_data["characters"][self.selected_character][which_slot] != "none":
             prev_addon = self.save_data["characters"][self.selected_character][which_slot]
-            self.save_data["addons"][prev_addon] += 1
+            self.save_data["addons"][prev_addon]["count"] += 1
         if addon_id is not None:
             self.save_data["characters"][self.selected_character][which_slot] = self.addon_data[addon_id]
-            self.save_data["addons"][addon_id] -= 1
+            self.save_data["addons"][addon_id]["count"] -= 1
         else:
             self.save_data["characters"][self.selected_character][which_slot] = "none"
         self.save_changes()
@@ -447,10 +448,11 @@ class ArmoryInterface(UserInterface):
         with open("data/save_data.json", "w") as save_file:
             json.dump(self.save_data, save_file)
 
-    def create_addon_desc(self, addon):
-        addon_desc = addon["name"]
-        if "desc" in addon:
-            addon_desc += "\n" + addon["desc"]
-        for mod in addon["effects"].keys():
-            addon_desc += "\n" + mod + ": " + str(addon["effects"][mod])
-        return addon_desc
+
+def create_addon_desc(addon):
+    addon_desc = addon["name"]
+    if "desc" in addon:
+        addon_desc += "\n" + addon["desc"]
+    for mod in addon["effects"].keys():
+        addon_desc += "\n" + mod + ": " + str(addon["effects"][mod])
+    return addon_desc

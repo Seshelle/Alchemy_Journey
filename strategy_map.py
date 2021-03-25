@@ -8,6 +8,8 @@ from game_state import GameState
 import game_modes
 from weighted_table import WeightedTable
 from user_interface import UserInterface
+from user_interface import create_addon_desc
+import json
 
 
 class Icon:
@@ -317,22 +319,66 @@ class LootInterface(UserInterface):
         loot["addons"] = round(loot["addons"] / 100)
         loot["gift"] = round(loot["gift"] / 100)
 
+        # load all addons that can drop and organize them by rarity
+        addon_table = WeightedTable("data/loot_tables.json", "loot")
+        addon_file = open("data/addons.json")
+        addon_data = json.load(addon_file)
+        addon_file.close()
+        common_addons = []
+        uncommon_addons = []
+        rare_addons = []
+        very_rare_addons = []
+        for addon in addon_data.keys():
+            addon_rarity = addon_data[addon]["rarity"]
+            if addon_rarity == 0:
+                common_addons.append(addon)
+            elif addon_rarity == 1:
+                uncommon_addons.append(addon)
+            elif addon_rarity == 2:
+                rare_addons.append(addon)
+            elif addon_rarity == 3:
+                very_rare_addons.append(addon)
+
+        # roll addons to give as loot
+        addon_loot = []
+        for i in range(loot["addons"]):
+            addon_rarity = addon_table.roll()
+            if addon_rarity == "common":
+                addon_loot.append(random.choice(common_addons))
+            elif addon_rarity == "uncommon":
+                addon_loot.append(random.choice(uncommon_addons))
+            elif addon_rarity == "rare":
+                addon_loot.append(random.choice(rare_addons))
+            elif addon_rarity == "very rare":
+                addon_loot.append(random.choice(very_rare_addons))
+
         # display loot
         self.add_image_button((250, 0, 200, 100), "Level: " + str(level), "level")
         self.add_image_button((250, 100, 200, 100), "Gold: " + str(loot["gold"]), "gold")
         self.add_image_button((250, 320, 200, 100), "Res: " + str(loot["research"]), "research")
-        self.add_image_button((250, 430, 200, 100), "Gifts: " + str(loot["gift"]), "gift")
-        self.add_image_button((250, 540, 200, 100), "addons: " + str(loot["addons"]), "addons")
-
-        if loot["gold"] > 0:
-            game_state.add_to_inventory("gold", loot["gold"])
-        if loot["research"] > 0:
-            game_state.add_to_inventory("research", loot["research"])
-        if 0 < loot["gift"] < 4:
-            game_state.add_to_inventory("small gifts", loot["gift"])
+        if loot["gift"] < 4:
+            self.add_image_button((250, 430, 200, 100), "Gifts: " + str(loot["gift"]), "gift")
         else:
-            game_state.add_to_inventory("big gifts", loot["gift"] - 3)
-        # TODO: roll addons and add them to expedition inventory
+            self.add_image_button((250, 430, 200, 100), "Big Gift", "gift")
+        count = 0
+        for addon in addon_loot:
+            self.add_image_button((500, 100 * count, 400, 100),
+                                  addon_data[addon]["name"],
+                                  "add" + str(count),
+                                  create_addon_desc(addon_data[addon]))
+            count += 1
+
+        # add loot to expedition inventory
+        game_state.add_to_inventory("gold", loot["gold"])
+        game_state.add_to_inventory("research", loot["research"])
+        if loot["gift"] > 0:
+            if loot["gift"] > 3:
+                game_state.add_to_inventory("big gifts", 1)
+            else:
+                game_state.add_to_inventory("small gifts", loot["gift"])
+        for addon in addon_loot:
+            game_state.add_to_inventory(addon, addon_data[addon])
+        game_state.dump_inventory()
 
     def render(self, screen):
         screen.fill(pygame.Color("black"))

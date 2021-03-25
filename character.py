@@ -26,7 +26,7 @@ class CharacterKeys:
 class CharacterModifiers:
     damage = "damage"
     accuracy = "accuracy"
-    evasion = "evasion"
+    dodge = "dodge"
     armor = "armor"
     movement = "movement"
     health = "health"
@@ -369,7 +369,7 @@ class Character(entity.Entity):
         return False
 
     def roll_to_hit(self, accuracy):
-        evasion = randint(0, 99) + self.get_data(CharacterModifiers.evasion)
+        evasion = randint(0, 99)
         if evasion < accuracy:
             for effect in self.status_effects:
                 effect.on_self_hit()

@@ -1,15 +1,17 @@
 {
 	"Fog Wand": {
 		"name": "Fog Wand",
+		"count": 1,
 		"appearance": "none",
 		"rarity": 1,
 		"effects": {
-			"evasion": 10,
+			"dodge": 10,
 			"accuracy": -10
 		}
 	},
 	"Test": {
 		"name": "Test",
+		"count": 1,
 		"appearance": "none",
 		"rarity": 0,
 		"effects": {
@@ -18,6 +20,7 @@
 	},
 	"Wombulator": {
 		"name": "Wombulator",
+		"count": 1,
 		"appearance": "none",
 		"rarity": 3,
 		"desc": "Abilities with less than 100% accuracy always miss.",
@@ -26,6 +29,47 @@
 		},
 		"special": {
 			"MissOnLess": 100
+		}
+	},
+	"Clear Lens": {
+		"name": "Clear Lens",
+		"count": 1,
+		"appearance": "none",
+		"rarity": 0,
+		"effects": {
+			"damage": 1
+		}
+	},
+	"Scratched Lens": {
+		"name": "Scratched Lens",
+		"count": 1,
+		"appearance": "none",
+		"rarity": 2,
+		"effects": {
+			"damage": 2,
+			"accuracy": -10
+		}
+	},
+	"Warped Lens": {
+		"name": "Warped Lens",
+		"count": 1,
+		"appearance": "none",
+		"rarity": 3,
+		"effects": {
+			"damage": 4,
+			"accuracy": -20
+		}
+	},
+	"Ultra Item": {
+		"name": "Ultra Item",
+		"count": 1,
+		"appearance": "none",
+		"rarity": 4,
+		"effects": {
+			"damage": 4,
+			"movement": 2,
+			"accuracy": -20,
+			"dodge": -20
 		}
 	}
 }

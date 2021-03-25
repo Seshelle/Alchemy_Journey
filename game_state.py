@@ -10,6 +10,9 @@ class GameState:
     player_characters = {}
     expedition_inventory = {}
     expedition_modifiers = {}
+    save_file = open("data/save_data.json", "r")
+    story_state = json.load(save_file)["story state"]
+    save_file.close()
 
 
 def start_expedition(player_data, inventory, modifiers):
@@ -32,7 +35,10 @@ def update_player(player):
 def add_to_inventory(item, amount):
     inv = GameState.expedition_inventory
     if item in inv:
-        inv[item] += amount
+        if isinstance(inv[item], int):
+            inv[item] += amount
+        else:
+            inv[item]["count"] += 1
     else:
         inv[item] = amount
 
@@ -40,16 +46,20 @@ def add_to_inventory(item, amount):
 def dump_inventory():
     # saves loot gained from an expedition to save_data
     inv = GameState.expedition_inventory
-    with open("data/save_data.json", "w") as save_file:
-        save_data = json.load(save_file)
-        for item in inv.keys():
-            if item in save_data["currency"]:
-                save_data["currency"][item] += inv[item]
-            elif item in save_data["addons"]:
-                save_data["addons"][item] += inv[item]
-            else:
-                save_data["addons"][item] = inv[item]
-        json.dump(save_data, save_file)
+    save_file = open("data/save_data.json", "r")
+    save_data = json.load(save_file)
+    save_file.close()
+    for item in inv.keys():
+        if item in save_data["currency"]:
+            save_data["currency"][item] += inv[item]
+        elif item in save_data["addons"]:
+            save_data["addons"][item]["count"] += item["count"]
+        else:
+            save_data["addons"][item] = inv[item]
+    save_file = open("data/save_data.json", "w")
+    json.dump(save_data, save_file)
+    save_file.close()
+    GameState.expedition_inventory.clear()
 
 
 def add_to_attribute(data, key, value):

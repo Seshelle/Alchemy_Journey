@@ -1,5 +1,5 @@
 {
-	"map file":"data/test_map.json",
+	"map file":"data/scenes/test_map.json",
 	"tile sheet":"images/tiles/basic_ground_tiles.png",
 	"sheet col":8,
 	"sheet row":7,

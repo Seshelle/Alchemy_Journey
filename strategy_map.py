@@ -126,7 +126,7 @@ class StrategyMap:
         self.path_grid[end_pos][0] = PathNode((end_pos, 0), Icon.important)
 
         # create weighted tables to pull encounters from
-        table_file = "data/encounter_tables.json"
+        table_file = "data/tables/encounter_tables.json"
         start_table = WeightedTable(table_file, "start")
         beginning_table = WeightedTable(table_file, "beginning")
         middle_table = WeightedTable(table_file, "middle")
@@ -288,7 +288,7 @@ class StrategyMap:
         if encounter == Icon.loot:
             return game_modes.LootScene(level)
         else:
-            return game_modes.CombatScene("data/combat_test_scene.json")
+            return game_modes.CombatScene("data/scenes/combat_test_scene.json")
 
 
 class LootInterface(UserInterface):
@@ -321,7 +321,7 @@ class LootInterface(UserInterface):
 
         # load all addons that can drop and organize them by rarity
         addon_table = WeightedTable("data/loot_tables.json", "loot")
-        addon_file = open("data/addons.json")
+        addon_file = open("data/stats/addons.json")
         addon_data = json.load(addon_file)
         addon_file.close()
         common_addons = []

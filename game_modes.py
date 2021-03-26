@@ -32,11 +32,10 @@ class MainMenu(GameMode):
     def __init__(self):
         super().__init__()
         self.interface = user_interface.UserInterface()
-        self.interface.add_image_button((0.4, 0.2, 0.2, 0.1), "Expedition", "expedition")
+        self.interface.add_image_button((0.4, 0.2, 0.2, 0.1), "Hub", "hub")
         self.interface.add_image_button((0.4, 0.35, 0.2, 0.1), "Test", "test")
         self.interface.add_image_button((0.4, 0.5, 0.2, 0.1), "Editor", "edit")
-        self.interface.add_image_button((0.4, 0.65, 0.2, 0.1), "Hub", "hub")
-        self.interface.add_image_button((0.4, 0.8, 0.2, 0.1), "Quit", "quit")
+        self.interface.add_image_button((0.4, 0.65, 0.2, 0.1), "Quit", "quit")
 
     def update(self, deltatime):
         self.screen.fill((0, 0, 0))
@@ -49,7 +48,7 @@ class MainMenu(GameMode):
             if button_pressed == "expedition":
                 self.new_mode = ExpeditionScene()
             elif button_pressed == "test":
-                self.new_mode = LootScene()
+                self.new_mode = CombatScene("data/scenes/test_map_scene.json")
             elif button_pressed == "edit":
                 self.new_mode = Editor()
             elif button_pressed == "hub":
@@ -83,7 +82,7 @@ class MapScene(GameMode):
 class Editor(MapScene):
     def __init__(self):
         super().__init__()
-        self.current_map = level_editor.LevelEditor("data/blank_scene.json")
+        self.current_map = level_editor.LevelEditor("data/scenes/blank_scene.json")
 
 
 class CombatScene(MapScene):
@@ -113,7 +112,7 @@ class DialogueScene(GameMode):
 class HubScene(MapScene):
     def __init__(self):
         super().__init__()
-        self.current_map = tilemap.FreeMoveMap("data/hub_scene.json")
+        self.current_map = tilemap.FreeMoveMap("data/scenes/hub_scene.json")
 
 
 class ExpeditionScene(MapScene):

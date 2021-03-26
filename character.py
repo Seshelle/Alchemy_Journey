@@ -117,7 +117,7 @@ class Character(entity.Entity):
         )
         self.skill_interface.set_active(False)
         self.selected_skill_id = None
-        with open("data/skill_list.json") as skill_file:
+        with open("data/stats/skill_list.json") as skill_file:
             skill_list = json.load(skill_file)
             for skill_name in entity_data[CharacterKeys.skills]:
                 skill_data = skill_list[skill_name]

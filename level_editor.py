@@ -9,10 +9,11 @@ from scenes import scenes
 class LevelEditor(tilemap.CombatMap):
     def __init__(self, filename):
         super().__init__(filename)
-        self.scene = scenes["Empty"](self)
+        # self.scene = scenes["Empty"](self)
         self.interface.set_button_active("end turn", False)
         self.interface.add_image_button((0.9, 0.95, 0.1, 0.05), "Save", "save")
         self.interface.add_image_button((0.75, 0.95, 0.1, 0.05), "Load", "load")
+        self.interface.add_image_button((0.6, 0.95, 0.1, 0.05), "New", "new")
         self.chosen_tile = 0
         self.layer = 0
         self.chosen_height = 0
@@ -67,6 +68,8 @@ class LevelEditor(tilemap.CombatMap):
                 self.save_map()
             elif button_pressed == "load":
                 self.load_map()
+            elif button_pressed == "new":
+                self.new_map()
             return
 
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -78,6 +81,19 @@ class LevelEditor(tilemap.CombatMap):
                 mouse_pos = tilemap.screen_to_path(pygame.mouse.get_pos())
                 mouse_pos = tilemap.path_to_map(mouse_pos)
                 self.chosen_tile = self.get_tile_attributes(mouse_pos)[TileKeys.tiles][self.layer][TileKeys.id]
+            elif event.button == 4 or event.button == 5:
+                zoom_step = 0.05
+                zoom_min = 0.6
+                zoom_max = 1
+                if event.button == 5:
+                    tilemap.Camera.zoom -= zoom_step
+                    if tilemap.Camera.zoom < zoom_min:
+                        tilemap.Camera.zoom = zoom_min
+                else:
+                    tilemap.Camera.zoom += zoom_step
+                    if tilemap.Camera.zoom > zoom_max:
+                        tilemap.Camera.zoom = zoom_max
+                self.zoom_background()
 
         elif event.type == pygame.MOUSEBUTTONUP:
             if event.button == 1 and self.painting:
@@ -111,18 +127,25 @@ class LevelEditor(tilemap.CombatMap):
                 self.layer = 1
 
     def save_map(self):
-        filename = user_interface.get_text_input(pygame.display.get_surface())
+        filename = user_interface.get_text_input(pygame.display.get_surface(), "Save as:")
         if filename is not None:
-            with open("data/" + filename + ".json", 'w') as map_file:
+            with open("data/scenes/" + filename + ".json", 'w') as map_file:
                 json.dump(self.tile_list, map_file, separators=(',', ':'))
 
     def load_map(self):
-        filename = user_interface.get_text_input(pygame.display.get_surface())
+        filename = user_interface.get_text_input(pygame.display.get_surface(), "Load:")
         if filename is not None:
-            with open("data/" + filename + ".json", 'r') as map_file:
+            with open("data/scenes/" + filename + ".json", 'r') as map_file:
                 self.tile_list = json.load(map_file)
                 self.default_background()
                 self.create_background()
+
+    def new_map(self):
+        dimensions = [int(user_interface.get_text_input(pygame.display.get_surface(), "Map width:")),
+                      int(user_interface.get_text_input(pygame.display.get_surface(), "Map height:"))]
+        self.tile_list.clear()
+        self.default_background(dimensions)
+        self.create_background()
 
     def edit_tile(self):
         mouse_pos = tilemap.screen_to_path(pygame.mouse.get_pos())

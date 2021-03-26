@@ -23,8 +23,8 @@ basicFont = pygame.font.SysFont(None, 36)
 game_mode = game_modes.MainMenu()
 
 # set save data to default on start
-save_file = open("data/save_data.json", "w")
-default_save = open("data/default_save_data.json", "r")
+save_file = open("data/saves/save_data.json", "w")
+default_save = open("data/saves/default_save_data.json", "r")
 save_file.write(default_save.read())
 save_file.close()
 default_save.close()

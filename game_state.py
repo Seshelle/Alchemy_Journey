@@ -10,7 +10,7 @@ class GameState:
     player_characters = {}
     expedition_inventory = {}
     expedition_modifiers = {}
-    save_file = open("data/save_data.json", "r")
+    save_file = open("data/saves/save_data.json", "r")
     story_state = json.load(save_file)["story state"]
     save_file.close()
 
@@ -46,7 +46,7 @@ def add_to_inventory(item, amount):
 def dump_inventory():
     # saves loot gained from an expedition to save_data
     inv = GameState.expedition_inventory
-    save_file = open("data/save_data.json", "r")
+    save_file = open("data/saves/save_data.json", "r")
     save_data = json.load(save_file)
     save_file.close()
     for item in inv.keys():
@@ -56,7 +56,7 @@ def dump_inventory():
             save_data["addons"][item]["count"] += item["count"]
         else:
             save_data["addons"][item] = inv[item]
-    save_file = open("data/save_data.json", "w")
+    save_file = open("data/saves/save_data.json", "w")
     json.dump(save_data, save_file)
     save_file.close()
     GameState.expedition_inventory.clear()

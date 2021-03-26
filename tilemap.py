@@ -228,8 +228,8 @@ class TileMap:
         # create separate images from sprite sheet
         sheet_rows = map_data[MapKeys.sheet_rows]
         sheet_columns = map_data[MapKeys.sheet_columns]
-        tile_width = map_data[MapKeys.tile_width]
-        tile_height = map_data[MapKeys.tile_height]
+        tile_width = tile_extent[0] * 2
+        tile_height = tile_extent[1] * 4
         count = 0
         for i in range(sheet_columns):
             for j in range(sheet_rows):
@@ -313,6 +313,7 @@ class TileMap:
         self.z_order_sort_entities()
 
     def setup_background(self, map_data):
+        # create the background surface
         self.map_width = map_data[MapKeys.map_width]
         self.map_height = map_data[MapKeys.map_height]
         self.border_width = map_data[MapKeys.border_width]
@@ -323,23 +324,26 @@ class TileMap:
         self.background = pygame.Surface([(self.map_width + self.border_width * 2 + 1) * tile_extent[0] * 2,
                                           (self.map_height + self.border_height * 2 + 1) * tile_extent[1]]).convert()
 
-    def default_background(self):
+    def default_background(self, dimensions=None):
         # create a background from a raw map file without using any scene data
-        max_coord = 0
-        for k in self.tile_list.keys():
-            if int(k) > max_coord:
-                max_coord = int(k)
+        if dimensions is None:
+            max_coord = 0
+            for k in self.tile_list.keys():
+                if int(k) > max_coord:
+                    max_coord = int(k)
+            self.map_width = round(max_coord / 1000 + 1)
+            self.map_height = max_coord % 1000 + 1
+        else:
+            self.map_width = dimensions[0]
+            self.map_height = dimensions[1]
 
-        self.map_width = round(max_coord / 1000 + 1)
-        self.map_height = max_coord % 1000 + 1
-        self.border_width = 4
-        self.border_height = 10
+        self.border_width = 2
+        self.border_height = 5
         Camera.pos[0] = 0
         Camera.pos[1] = 0
         self.background_offset = (-self.border_width * tile_extent[0] * 2, -self.border_height * tile_extent[1])
         self.background = pygame.Surface([(self.map_width + self.border_width * 2 + 1) * tile_extent[0] * 2,
-                                          (self.map_height + self.border_height * 2 + 1) * tile_extent[
-                                              1]]).convert()
+                                          (self.map_height + self.border_height * 2 + 1) * tile_extent[1]]).convert()
 
     def create_background(self):
         # create a grayed out border image
@@ -384,8 +388,10 @@ class TileMap:
         return self.get_tile_attributes(map_coords)
 
     def get_tile_attributes(self, tile_pos):
-        hashed = tile_pos[0] * 1000 + tile_pos[1]
-        return self.tile_list[str(hashed)]
+        hashed = str(tile_pos[0] * 1000 + tile_pos[1])
+        if hashed in self.tile_list:
+            return self.tile_list[hashed]
+        return {"tiles": [{"id": 0, "height": 0}], "walk": True, "los": True}
 
     def set_tile_attributes(self, tile_pos, tile_data):
         hashed = tile_pos[0] * 1000 + tile_pos[1]
@@ -554,20 +560,20 @@ class CombatMap(TileMap):
         elif MapKeys.characters in map_data.keys():
             self.add_entities(map_data[MapKeys.characters])
             game_state.GameState.player_characters.clear()
-            with open("data/character_list.json") as char_file:
-                char_data = json.load(char_file)["characters"]
+            with open("data/stats/character_list.json") as char_file:
+                char_data = json.load(char_file)
                 for name in map_data["players"]:
                     game_state.GameState.player_characters[name] = char_data[name]
 
         self.add_players(game_state.GameState.player_characters)
         if MapKeys.scene in map_data.keys():
-            self.scene = scenes[map_data[MapKeys.scene]](self)
+            self.scene = scenes[map_data[MapKeys.scene]](self, map_data)
         else:
-            self.scene = scenes["Empty"](self)
+            self.scene = scenes["Empty"](self, map_data)
 
     def populate_map(self):
         # make up an assortment of enemies to face
-        with open("data/enemy_list.json") as enemy_file:
+        with open("data/stats/enemy_list.json") as enemy_file:
             enemy_list = json.load(enemy_file)
 
         # just grab 5 random enemies from enforcer group for now
@@ -1179,9 +1185,9 @@ class CombatMap(TileMap):
     def detect_victory(self):
         # let scene object handle potential alternate victory conditions
         alternate_victory = self.scene.detect_victory()
-        if alternate_victory is not None:
-            return alternate_victory
-        if alternate_victory is None:
+        if alternate_victory:
+            return self.scene.handle_victory()
+        elif alternate_victory is None:
             # otherwise check if there are any remaining enemies on the map
             victory = True
             for c in self.character_list:
@@ -1189,27 +1195,33 @@ class CombatMap(TileMap):
                     victory = False
                     break
             if victory:
-                # update game state with current player state
-                for c in self.controlled_characters:
-                    game_state.update_player(c)
-                self.change_mode(game_modes.ExpeditionScene())
-                return True
+                handle_victory = self.scene.handle_victory()
+                if handle_victory is None:
+                    # default is returning player to their current expedition
+                    for c in self.controlled_characters:
+                        game_state.update_player(c)
+                    self.change_mode(game_modes.ExpeditionScene())
+                    return True
+                return handle_victory
         return False
 
     def detect_failure(self):
-        # check if all controllable characters are knocked out
-        for c in self.controlled_characters:
-            if not c.knocked_out:
-                return False
-        return self.fail_scene()
-
-    def fail_scene(self):
-        failure = self.scene.handle_failure()
-        if failure is not None:
-            return failure
-        if failure is None:
-            self.change_mode(game_modes.HubScene())
-            return True
+        # let the scene handle it first
+        failure = self.scene.detect_failure()
+        if failure:
+            return self.scene.handle_failure()
+        elif failure is None:
+            # check if all characters are knocked out for default failure
+            for c in self.controlled_characters:
+                if not c.knocked_out:
+                    return False
+            handle_failure = self.scene.handle_failure()
+            if handle_failure is None:
+                # by default return the player to their base
+                self.change_mode(game_modes.HubScene())
+                return True
+            else:
+                return handle_failure
 
 
 class FreeMoveMap(TileMap):

@@ -1,9 +1,9 @@
-import pygame
 import dialogue
+import game_modes
 
 
 class Scene:
-    def __init__(self, current_map):
+    def __init__(self, current_map, map_data):
         self.current_map = current_map
         self.block_input = False
 
@@ -11,6 +11,16 @@ class Scene:
         return not self.block_input
 
     def detect_victory(self):
+        # changes what the map considers victory
+        # return None to keep default map behavior
+        return None
+
+    def handle_victory(self):
+        # called when current_map has detected a victory
+        # return None to keep default map behavior
+        return None
+
+    def detect_failure(self):
         return None
 
     def handle_failure(self):
@@ -36,17 +46,12 @@ def scene(f):
     scenes[f.__name__] = f
 
 
-@scene
-class Empty(Scene):
-    pass
-
-
-@scene
-class Tutorial(Scene):
-    def __init__(self, current_map):
-        super().__init__(current_map)
+# this class handles scenes that start with dialogue and need it displayed
+class DialogueScene(Scene):
+    def __init__(self, current_map, map_data):
+        super().__init__(current_map, map_data)
         self.block_input = True
-        self.dialogue = dialogue.Dialogue("data/tutorial_dialogue.json")
+        self.dialogue = dialogue.Dialogue(map_data["dialogue"])
         self.current_map.interface.set_button_active("end turn", False)
 
     def update(self, deltatime):
@@ -60,8 +65,29 @@ class Tutorial(Scene):
             self.current_map.move_camera_to_path(camera_pos)
 
     def notify(self, event):
-        self.dialogue.notify(event)
+        if self.dialogue.active:
+            self.dialogue.notify(event)
         return self.block_input
 
     def render(self, screen):
         self.dialogue.render(screen)
+
+
+@scene
+class Empty(Scene):
+    pass
+
+
+@scene
+class Tutorial(DialogueScene):
+    def __init__(self, current_map, map_data):
+        super().__init__(current_map, map_data)
+
+    def handle_victory(self):
+        # go to next dialogue scene
+        return None
+
+    def handle_failure(self):
+        # return to main menu
+        self.current_map.change_mode(game_modes.MainMenu())
+        return True

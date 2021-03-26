@@ -6,7 +6,7 @@ import game_modes
 from game_state import start_expedition
 
 
-def get_text_input(screen):
+def get_text_input(screen, text=None):
     user_input = ""
     input_rect = (a_settings.display_width / 3, a_settings.display_height / 3,
                   a_settings.display_width / 3, a_settings.display_height / 3)
@@ -26,6 +26,17 @@ def get_text_input(screen):
                     user_input += event.unicode
         pygame.draw.rect(screen, pygame.Color("blue"), input_border)
         pygame.draw.rect(screen, pygame.Color("black"), input_rect)
+        if text is not None:
+            draw_shadowed_text(
+                screen,
+                text,
+                pygame.Color("white"),
+                (a_settings.display_width / 3, a_settings.display_height / 3 - 50,
+                 a_settings.display_width / 3, a_settings.display_height / 3),
+                font,
+                True
+            )
+
         draw_shadowed_text(
             screen,
             user_input,
@@ -213,7 +224,7 @@ class EmbarkInterface(UserInterface):
         self.chosen_characters = {}
         self.party_slots = [None, None, None, None]
         self.char_height = 0.15
-        with open("data/character_list.json") as char_file:
+        with open("data/stats/character_list.json") as char_file:
             self.char_data = json.load(char_file)
             for i, c in enumerate(self.char_data.values()):
                 char_name = c["name"]
@@ -271,7 +282,7 @@ class EmbarkInterface(UserInterface):
 class ArmoryInterface(UserInterface):
     def __init__(self):
         super().__init__(False)
-        with open("data/save_data.json", "r") as save_file:
+        with open("data/saves/save_data.json", "r") as save_file:
             self.save_data = json.load(save_file)
 
         # set up box on left to hold character list
@@ -281,7 +292,7 @@ class ArmoryInterface(UserInterface):
         self.add_image_button((0, 0, self.box_width, 1), pygame.Color("black"), "box1", is_button=False)
 
         # create character list on left
-        with open("data/character_list.json") as char_file:
+        with open("data/stats/character_list.json") as char_file:
             self.char_data = json.load(char_file)
         count = 0
         for c in self.char_data.keys():
@@ -318,7 +329,7 @@ class ArmoryInterface(UserInterface):
 
         # populate skill display with skills from first character
         self.skill_dimensions = 0.05
-        with open("data/skill_list.json") as skill_file:
+        with open("data/stats/skill_list.json") as skill_file:
             self.skill_data = json.load(skill_file)
         self.selected_character = None
         self.skill_button_list = []
@@ -332,7 +343,7 @@ class ArmoryInterface(UserInterface):
         self.set_button_active("invbox", False)
 
         # create a button for each addon in player's inventory
-        with open("data/addons.json") as addon_file:
+        with open("data/stats/addons.json") as addon_file:
             self.addon_data = json.load(addon_file)
         self.inventory_buttons = []
         self.reset_inventory()
@@ -445,7 +456,7 @@ class ArmoryInterface(UserInterface):
         self.reset_inventory()
 
     def save_changes(self):
-        with open("data/save_data.json", "w") as save_file:
+        with open("data/saves/save_data.json", "w") as save_file:
             json.dump(self.save_data, save_file)
 
 

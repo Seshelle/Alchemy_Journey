@@ -226,14 +226,16 @@ class EmbarkInterface(UserInterface):
         self.char_height = 0.15
         with open("data/stats/character_list.json") as char_file:
             self.char_data = json.load(char_file)
-            for i, c in enumerate(self.char_data.values()):
-                char_name = c["name"]
-                self.free_characters[char_name] = c
+            count = 0
+            for c in self.char_data.keys():
+                char_name = self.char_data[c]["name"]
+                self.free_characters[c] = self.char_data[c]
                 self.add_image_button(
-                    (0, self.char_height * i, self.box_width, self.char_height - 0.02),
+                    (0, self.char_height * count, self.box_width, self.char_height - 0.02),
                     char_name,
-                    char_name
+                    c
                 )
+                count += 1
 
     def notify(self, event):
         if self.active and event.type == pygame.MOUSEBUTTONDOWN:

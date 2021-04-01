@@ -33,7 +33,7 @@ class MainMenu(GameMode):
         super().__init__()
         self.interface = user_interface.UserInterface()
         self.interface.add_image_button((0.4, 0.2, 0.2, 0.1), "Hub", "hub")
-        self.interface.add_image_button((0.4, 0.35, 0.2, 0.1), "Test", "test")
+        self.interface.add_image_button((0.4, 0.35, 0.2, 0.1), "Tutorial", "test")
         self.interface.add_image_button((0.4, 0.5, 0.2, 0.1), "Editor", "edit")
         self.interface.add_image_button((0.4, 0.65, 0.2, 0.1), "Quit", "quit")
 
@@ -48,7 +48,7 @@ class MainMenu(GameMode):
             if button_pressed == "expedition":
                 self.new_mode = ExpeditionScene()
             elif button_pressed == "test":
-                self.new_mode = CombatScene("data/scenes/test_map_scene.json")
+                self.new_mode = MapScene("data/scenes/test_map_scene.json")
             elif button_pressed == "edit":
                 self.new_mode = Editor()
             elif button_pressed == "hub":
@@ -60,7 +60,7 @@ class MainMenu(GameMode):
         pass
 
 
-class MapScene(GameMode):
+class BasicScene(GameMode):
     def __init__(self):
         super().__init__()
         self.current_map = None
@@ -79,13 +79,13 @@ class MapScene(GameMode):
             self.current_map.notify(event)
 
 
-class Editor(MapScene):
+class Editor(BasicScene):
     def __init__(self):
         super().__init__()
         self.current_map = level_editor.LevelEditor("data/scenes/blank_scene.json")
 
 
-class CombatScene(MapScene):
+class MapScene(BasicScene):
     def __init__(self, filename):
         super().__init__()
         self.current_map = tilemap.CombatMap(filename)
@@ -109,13 +109,13 @@ class DialogueScene(GameMode):
             self.dialogue.notify(event)
 
 
-class HubScene(MapScene):
+class HubScene(BasicScene):
     def __init__(self):
         super().__init__()
         self.current_map = tilemap.FreeMoveMap("data/scenes/hub_scene.json")
 
 
-class ExpeditionScene(MapScene):
+class ExpeditionScene(BasicScene):
     def __init__(self):
         super().__init__()
         self.current_map = strategy_map.StrategyMap()

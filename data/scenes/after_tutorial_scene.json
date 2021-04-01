@@ -1,0 +1,32 @@
+{
+	"scene":"Cutscene",
+	"map file":"data/scenes/blank_map.json",
+	"tile sheet":"images/tiles/basic_ground_tiles.png",
+	"dialogue": "data/after_tutorial_dialogue.json",
+	"sheet col":8,
+	"sheet row":7,
+	"map width":25,
+	"map height":50,
+	"border width": 2,
+	"border height": 5,
+	"camera x":20,
+	"camera y": 0,
+	"players": ["marcus", "amelia", "genevieve"],
+	"spawn points":[[22, 1],[20, 1],[23, 0]],
+	"characters":[
+		{
+			"team":1,
+			"spawn x":20,
+			"spawn y":0,
+			"appearance":"images/tile041.png",
+			"avatar":"images/tile041.png",
+			"name":"Faust",
+			"height":1.5,
+			"health":6,
+			"movement":5,
+			"skills":[
+				"claw"
+			]
+		}
+	]
+}

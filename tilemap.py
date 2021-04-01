@@ -707,7 +707,8 @@ class CombatMap(TileMap):
             screen.blit(zoom_selection, path_to_screen(self.selected_character.position))
             selected_skill = self.selected_character.get_selected_skill()
 
-            if self.selected_character.accepting_input and selected_skill is None and self.selected_character.has_move:
+            if self.selected_character.accepting_input and selected_skill is None and \
+                    self.selected_character.action_points > 0:
                 # calculate a new path whenever destination changes
                 if self.skill_display_update:
                     self.path = self.find_path(
@@ -882,9 +883,13 @@ class CombatMap(TileMap):
                 self.move_camera_in_bounds()
 
     def add_players(self, entity_data):
-        for c in entity_data.values():
-            # team 0 is the player controlled team
-            new_character = character.Character(self.get_spawn(), self, c)
+        save_file = open("data/saves/save_data.json")
+        save_data = json.load(save_file)
+        save_file.close()
+        for c in entity_data:
+            if "upgrades" not in entity_data[c]:
+                entity_data[c]["upgrades"] = save_data["characters"][c]["upgrades"]
+            new_character = character.Character(self.get_spawn(), self, entity_data[c])
             self.controlled_characters.append(new_character)
             self.character_list.append(new_character)
             self.entity_list.append(new_character)
@@ -956,9 +961,8 @@ class CombatMap(TileMap):
         for c in self.character_list:
             c.reset_display()
 
-    def display_movement(self, this_character):
-        self.possible_paths = self.find_all_paths(this_character.position,
-                                                  this_character.get_data(CharacterKeys.movement))
+    def display_movement(self, position, movement):
+        self.possible_paths = self.find_all_paths(position, movement)
         # show possible movement tiles for selected character
         self.clear_tinted_tiles()
         self.tinted_tiles[TintColors.green] = self.possible_paths

@@ -8,6 +8,7 @@
 		"movement":5,
 		"mana":12,
 		"skills":[
+			"bash",
 			"lucky bolt",
 			"dash",
 			"chaotic vortex",
@@ -25,6 +26,7 @@
 		"movement":5,
 		"mana":16,
 		"skills":[
+			"bash",
 			"power shot",
 			"quick draw",
 			"homing shot"
@@ -40,6 +42,7 @@
 		"movement":5,
 		"mana":12,
 		"skills":[
+			"bash",
 			"sweep",
 			"stun",
 			"throw",
@@ -55,6 +58,7 @@
 		"movement":5,
 		"mana":12,
 		"skills":[
+			"bash",
 			"heal",
 			"burn",
 			"shield"
@@ -69,7 +73,7 @@
 		"movement":5,
 		"mana":12,
 		"skills":[
-
+			"bash"
 		]
 	}
 }

@@ -1,17 +1,166 @@
 {
-	"lines":[{
-		"speaker":"Amelia",
-		"portrait": "amelia_portrait",
-		"text":"You see someone?"
-		},{
-		"speaker":"Marcus",
-		"portrait": "marcus_portrait",
-		"camera x": 12,
-		"camera y": 0,
-		"text":"Yeah, that guy over there."
-		},{
-		"text":"Theodore"},
-
-		{"break":"scene"}
+	"lines":[
+		{
+			"camera pan": [11, 2],
+			"speaker":"Amelia",
+			"portrait": "amelia_portrait",
+			"text":"You see him?"
+		},
+		{
+			"speaker":"Marcus",
+			"portrait": "marcus_portrait",
+			"text":"Yes, that's the person we're looking for."
+		},
+		{
+			"camera pan": [24, 0],
+			"text":"Faust"
+		},
+		{
+			"speaker": "Amelia",
+			"text": "Let's get him!"
+		},
+		{
+			"speaker":"Marcus",
+			"text": "Hold on, he's dangerous. We should think of a plan before we attack."
+		},
+		{
+			"text": "Let me think..."
+		},
+		{
+			"camera pan": [20, 0],
+			"move character": {"character": "Faust", "path": [[27, 0],[26, 0],[25, 0],[24, 0],[23, 0],[22, 0],[21, 0],[20, 0]]},
+			"text": "Wait, he's moving toward us. I have an idea."
+		},
+		{
+			"camera pan": [15, 0],
+			"speaker": "Amelia",
+			"text": "Hide here and ambush him?"
+		},
+		{
+			"speaker": "Marcus",
+			"text": "You got it. Now let's give this guy some payback."
+		},
+		{
+			"speaker": "Faust",
+			"move character": {"character": "Faust", "path": [[19, 0]]},
+			"text": "That bastard. I can't believe him. How could he not support me? I just want what's rightfully ours."
+		},
+		{
+			"camera pan": [15, 0],
+			"speaker": "Amelia",
+			"text": "After you Marcus."
+		},
+		{
+			"speaker": "Marcus",
+			"text": "On the count of three..."
+		},
+		{
+			"move character": {"character": "Faust", "path": [[18, 0]]},
+			"text": "One..."
+		},
+		{
+			"move character": {"character": "Faust", "path": [[17, 0]]},
+			"text": "Two..."
+		},
+		{
+			"move character": {"character": "Genevieve", "path": [[27, 0]]},
+			"speaker": "???",
+			"text": "Hold it right there Faust!"
+		},
+		{
+			"camera pan": [21, 0],
+			"speaker": "Faust",
+			"text": "Well, if it isn't Genevieve. Has your father decided to accept my demands?"
+		},
+		{
+			"camera pan": [15, 0],
+			"speaker": "Marcus",
+			"text": "Darn, he's been alerted. We can't attack now."
+		},
+		{
+			"speaker": "Amelia",
+			"text": "We were so close! Who is this girl?"
+		},
+		{
+			"camera pan": [21, 0],
+			"speaker": "Genevieve",
+			"portrait": "genevieve_portrait",
+			"text": "I'm here to tell you to give up, Faust. My father won't give in no matter how much you threaten him."
+		},
+		{
+			"speaker": "Faust",
+			"text": "Oh? Did he send you? Makes sense. A coward like him couldn't tell that to my face."
+		},
+		{
+			"speaker": "Genevieve",
+			"text": "He didn't send me. I'm stopping you myself."
+		},
+		{
+			"move character": {"character": "Faust", "path": [[18, 0], [19, 0]]},
+			"speaker": "Faust",
+			"text": "All by yourself? That was a mistake."
+		},
+		{
+			"move character": {"character": "Faust", "path": [[20, 0], [21, 0]]},
+			"text": "It's true your father won't accept my demands now, but what about for his daughter?"
+		},
+		{
+			"speaker": "Genevieve",
+			"text": "Don't you dare."
+		},
+		{
+			"move character": {"character": "Faust", "path": [[22, 0]]},
+			"speaker": "Faust",
+			"text": "You don't-"
+		},
+		{
+			"comment": "Genevieve blasts Faust.",
+			"text": "Gah! It burns!"
+		},
+		{
+			"speaker": "Genevieve",
+			"text": "Go away and never bother my father again!"
+		},
+		{
+			"speaker": "Faust",
+			"text": "Argh! Luckily I prepared for this."
+		},
+		{
+			"speaker": "Genevieve",
+			"text": "What are you talking about?"
+		},
+		{
+			"move character": {"character": "Thug #1", "path": [[24, -1]]}
+		},
+		{
+			"move character": {"character": "Thug #2", "path": [[24, 0]]}
+		},
+		{
+			"move character": {"character": "Thug #3", "path": [[24, 1]]}
+		},
+		{
+			"comment": "Thugs come to support him",
+			"speaker": "Faust",
+			"text": "Reveal yourselves!"
+		},
+		{
+			"speaker": "Genevieve",
+			"text": "What? How?"
+		},
+		{
+			"camera pan": [15, 0],
+			"speaker": "Amelia",
+			"text": "Come on Marcus, let's go!"
+		},
+		{
+			"speaker": "Marcus",
+			"text": "Agreed."
+		},
+		{
+			"break": "fight"
+		},
+		{
+			"text": "Test"
+		}
 	]
 }

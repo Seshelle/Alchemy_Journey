@@ -116,8 +116,8 @@ class Skill:
             if self.has_tag(SkillTags.free_action):
                 return True
             if self.has_tag(SkillTags.bonus_action):
-                return self.user.has_bonus_action or self.user.has_action
-            return self.user.has_action
+                return self.user.can_use_skill(True)
+            return self.user.can_use_skill()
         return False
 
     def display_targets(self, tile_pos):
@@ -250,7 +250,7 @@ class Default(Skill):
 class DelayedTrigger(Skill):
     def exec_skill(self, tile_pos):
         # place a delayed explosion entity at tile position
-        if self.user.has_action and self.is_valid_tile(tile_pos):
+        if self.user.can_use_skill() and self.is_valid_tile(tile_pos):
             current_map = self.user.current_map
             if current_map.in_bounds(tile_pos, True):
                 current_map.add_entity(entity.DelayedSkill(
@@ -372,4 +372,3 @@ class Throw(ChainedSkill):
 
             throw_target.position = self.second_target
             throw_target.visual_position = self.second_target
-

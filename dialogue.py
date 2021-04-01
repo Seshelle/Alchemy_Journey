@@ -55,6 +55,7 @@ class Dialogue:
     font_size = 40
     font_color = "white"
     left_just = a_settings.display_width / 3
+    top_just = a_settings.display_height * 9 / 16
     speech_width = a_settings.display_width * 7 / 12
     speech_height = a_settings.display_height * 5 / 12
     portrait_dimensions = 512
@@ -71,9 +72,16 @@ class Dialogue:
         self.speaker = " "
         self.speaker_color = pygame.Color(Dialogue.font_color)
         self.speech = pygame.Surface((Dialogue.speech_width, Dialogue.speech_height)).convert()
+        self.speech.set_alpha(220)
+        self.portrait_active = False
         self.portrait = None
 
+        # dialogue memory
+        self.portrait_dict = {}
         self.camera_set = None
+        self.character_move = None
+        self.repeat = False
+        self.change_scene = None
 
         self.active = start_active
         if start_active:
@@ -84,8 +92,9 @@ class Dialogue:
 
     def render(self, screen):
         if self.active:
-            screen.blit(self.speech, (Dialogue.left_just, a_settings.display_height / 2))
-            screen.blit(self.portrait, (0, a_settings.display_height - Dialogue.portrait_dimensions))
+            screen.blit(self.speech, (Dialogue.left_just, Dialogue.top_just))
+            if self.portrait_active:
+                screen.blit(self.portrait, (0, a_settings.display_height - Dialogue.portrait_dimensions))
 
     def notify(self, event):
         if self.active and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -106,27 +115,41 @@ class Dialogue:
 
             # get next line of speech from file
             line = self.dialogue["lines"][self.current_line]
+            self.current_line += 1
+
+            if "change scene" in line:
+                self.change_scene = line["change scene"]
 
             # move camera to chosen coordinates
-            if "camera x" in line.keys():
-                self.camera_set = (line["camera x"], line["camera y"])
+            if "camera pan" in line:
+                self.camera_set = line["camera pan"]
 
-            if "break" in line.keys():
-                self.break_message = line["break"]
-                self.active = False
+            if "move character" in line:
+                self.character_move = line["move character"]
 
-            if "text" in line.keys():
+            if "text" in line:
                 self.text = line["text"]
                 self.speech.fill(pygame.Color("tan"))
 
                 # if a new speaker is defined for the line, draw it to title line
-                if "speaker" in line.keys():
+                if "speaker" in line:
                     self.speaker = line["speaker"]
 
                 # display portrait of speaker if defined
-                if "portrait" in line.keys():
-                    self.portrait = pygame.image.load("images/characters/" + line["portrait"] + ".png").convert()
-                    self.portrait.set_colorkey(pygame.Color("white"))
+                if "portrait" in line:
+                    if line["portrait"] == "":
+                        self.portrait_active = False
+                    else:
+                        self.portrait_active = True
+                        image_file = "images/characters/" + line["portrait"] + ".png"
+                        self.portrait = pygame.image.load(image_file).convert()
+                        self.portrait.set_colorkey(pygame.Color("white"))
+                        self.portrait_dict[self.speaker] = image_file
+                elif self.speaker in self.portrait_dict:
+                    self.portrait_active = True
+                    self.portrait = pygame.image.load(self.portrait_dict[self.speaker])
+                else:
+                    self.portrait_active = False
 
                 title_height = 60
                 title_pad_top = 10
@@ -140,7 +163,11 @@ class Dialogue:
                           (speech_pad_left, title_height,
                            self.speech.get_width() - speech_pad_left * 2, self.speech.get_height() - title_height),
                           self.font, True)
+            elif "break" in line:
+                self.break_message = line["break"]
+                self.active = False
+            else:
+                self.repeat = True
         else:
             self.break_message = "EOF"
             self.active = False
-        self.current_line += 1

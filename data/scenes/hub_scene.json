@@ -19,7 +19,7 @@
 			"appearance":"images/tile041.png",
 			"height":1.5,
 			"message":"E: TALK",
-			"dialogue":"data/dialogue_test.json"
+			"dialogue":"data/tutorial_dialogue.json"
 		}
 	],
 	"menus":[

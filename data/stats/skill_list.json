@@ -3,21 +3,43 @@
 		"name":"Lucky Bolt",
 		"sound":"game_sounds/Lucky_BoltSound.wav",
 		"code":"Default",
-		"desc":"Shoots a bolt with high crit chance. It applies a random small debuff to its target.",
+		"desc":"Shoots a bolt with high critical chance. It applies a random small debuff to its target.",
 		"tags":[
 			"magical",
 			"ranged",
-			"debuff",
-			"unfinished"
+			"debuff"
 		],
 		"on hit effect":{
 			"code":"RandomMinorDebuff",
 			"can stack":true,
 			"duration":5
 		},
+		"levels": [
+			{
+				"level": 2,
+				"damage": [3, 8],
+				"crit chance": 15
+			},
+			{
+				"level": 3,
+				"damage": [3, 9],
+				"crit chance": 15
+			},
+			{
+				"level": 4,
+				"damage": [3, 10],
+				"crit chance": 20
+			},
+			{
+				"level": 5,
+				"damage": [3, 11],
+				"crit chance": 25
+			}
+		],
 		"range":8,
 		"damage":[3,7],
 		"accuracy":85,
+		"crit chance": 10,
 		"appearance":"none"
 	},
 	"magic missile":{
@@ -66,7 +88,28 @@
 		"sound":"game_sounds/DashSound.wav",
 		"code":"MoveSkill",
 		"desc":"Use an action to move in a straight line to a new position.",
-		"range":5,
+		"range":3,
+		"levels":[
+			{
+				"level": 2,
+				"range": 4
+			},
+			{
+				"level": 3,
+				"range": 5
+			},
+			{
+				"level": 4,
+				"range": 5,
+				"mana cost": 0
+			},
+			{
+				"level": 5,
+				"range": 6,
+				"mana cost": 0
+			}
+		],
+		"mana cost": 1,
 		"tags":[
 			"movement",
 			"aimed"
@@ -112,7 +155,7 @@
 	"power shot":{
 		"name":"Power shot",
 		"code":"Default",
-		"desc":"Highly damaging arrow. Deals extra damage to enemies not next to a wall",
+		"desc":"Highly damaging arrow. Deals extra damage if you have not moved.",
 		"tags":[
 			"piercing",
 			"ranged",
@@ -127,7 +170,7 @@
 		"name":"Quick Draw",
 		"sound":"game_sounds/Quick_DrawSound.wav",
 		"code":"Default",
-		"desc":"A quick shot that takes no action. Useable once per turn.",
+		"desc":"A quick shot that takes no action, once per turn.",
 		"tags":[
 			"piercing",
 			"ranged",
@@ -159,7 +202,7 @@
 		"name":"Sweep",
 		"sound":"game_sounds/SweepSound.wav",
 		"code":"Sweep",
-		"desc":"Sweep your weapon across three adjacenet tiles, hitting any enemies enocunterd.",
+		"desc":"Sweep your weapon across three adjacent tiles, hitting any enemies encountered.",
 		"tags":[
 			"slashing",
 			"melee",
@@ -436,6 +479,20 @@
 		],
 		"damage":[8,11],
 		"accuracy":90,
+		"appearance":"none"
+	},
+	"cheating": {
+		"name": "cheating",
+		"code":"Default",
+		"desc":"Insta-kill anything",
+		"tags":[
+			"ranged",
+			"piercing",
+			"aimed"
+		],
+		"range": 20,
+		"damage":[1000,1000],
+		"accuracy":9999,
 		"appearance":"none"
 	}
 }

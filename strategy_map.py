@@ -288,7 +288,7 @@ class StrategyMap:
         if encounter == Icon.loot:
             return game_modes.LootScene(level)
         else:
-            return game_modes.CombatScene("data/scenes/combat_test_scene.json")
+            return game_modes.MapScene("data/scenes/combat_test_scene.json")
 
 
 class LootInterface(UserInterface):
@@ -320,7 +320,7 @@ class LootInterface(UserInterface):
         loot["gift"] = round(loot["gift"] / 100)
 
         # load all addons that can drop and organize them by rarity
-        addon_table = WeightedTable("data/loot_tables.json", "loot")
+        addon_table = WeightedTable("data/tables/loot_tables.json", "loot")
         addon_file = open("data/stats/addons.json")
         addon_data = json.load(addon_file)
         addon_file.close()
@@ -397,7 +397,7 @@ class ShopInterface(UserInterface):
         addon_prices = []
         chosen_addon = "common"
         if level > 8:
-            addon_table = WeightedTable("data/loot_tables.json", "shop")
+            addon_table = WeightedTable("data/tables/loot_tables.json", "shop")
             chosen_addon = addon_table.roll()
         elif random.random() < 0.5:
             chosen_addon = "uncommon"

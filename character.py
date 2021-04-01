@@ -13,6 +13,7 @@ import json
 
 class CharacterKeys:
     name = "name"
+    upgrades = "upgrades"
     team = "team"
     health = "health"
     armor = "armor"
@@ -27,6 +28,7 @@ class CharacterModifiers:
     damage = "damage"
     accuracy = "accuracy"
     dodge = "dodge"
+    evasion = "evasion"
     armor = "armor"
     movement = "movement"
     health = "health"
@@ -50,14 +52,15 @@ class Character(entity.Entity):
         self.selected = False
 
         # current state of character
-        self.has_move = True
-        self.has_action = True
+        self.action_points = 2
         self.has_bonus_action = True
+        self.used_skill = False
         self.knocked_out = False
         self.stabilized = False
         self.knockout_timer = 3
         self.status_effects = []
         self.modifiers = {}
+        self.show_ui = True
 
         # attributes of this character
         self.name = entity_data[CharacterKeys.name]
@@ -117,9 +120,11 @@ class Character(entity.Entity):
         )
         self.skill_interface.set_active(False)
         self.selected_skill_id = None
-        with open("data/stats/skill_list.json") as skill_file:
-            skill_list = json.load(skill_file)
-            for skill_name in entity_data[CharacterKeys.skills]:
+        skill_file = open("data/stats/skill_list.json")
+        skill_list = json.load(skill_file)
+        skill_file.close()
+        for skill_name in entity_data[CharacterKeys.skills]:
+            if CharacterKeys.upgrades not in entity_data or skill_name in entity_data[CharacterKeys.upgrades]:
                 skill_data = skill_list[skill_name]
                 self.add_skill(skill_handler.skill_list[skill_data[SkillKeys.code]](skill_data, self))
 
@@ -133,6 +138,20 @@ class Character(entity.Entity):
         if key in self.modifiers.keys():
             data += self.modifiers[key]
         return data
+
+    def get_movement(self):
+        movement = self.get_data(CharacterKeys.movement)
+        if self.action_points == 1:
+            movement /= 2
+        return movement
+
+    def has_actions(self):
+        return self.action_points > 0
+
+    def can_use_skill(self, bonus_action=False):
+        if bonus_action is False:
+            return self.action_points > 0 and self.used_skill is False
+        return self.has_bonus_action
 
     def get_z(self):
         return self.visual_position[0] + self.visual_position[1] + 0.001
@@ -195,18 +214,19 @@ class Character(entity.Entity):
 
     def second_render(self, screen):
         # render health and mana bars
-        screen_pos = tilemap.path_to_screen(self.visual_position)
-        height = self.get_height()
-        screen.blit(self.health_bar, (screen_pos[0], screen_pos[1] - height - self.bar_height))
-        screen.blit(self.mana_bar, (screen_pos[0], screen_pos[1] - height))
-        if self.chance_image_active:
-            screen.blit(self.chance_image, (screen_pos[0] + tilemap.tile_extent[0], screen_pos[1] - height))
-        self.skill_interface.render(screen)
+        if self.show_ui:
+            screen_pos = tilemap.path_to_screen(self.visual_position)
+            height = self.get_height()
+            screen.blit(self.health_bar, (screen_pos[0], screen_pos[1] - height - self.bar_height))
+            screen.blit(self.mana_bar, (screen_pos[0], screen_pos[1] - height))
+            if self.chance_image_active:
+                screen.blit(self.chance_image, (screen_pos[0] + tilemap.tile_extent[0], screen_pos[1] - height))
+            self.skill_interface.render(screen)
 
-        # render any active damage indicators
-        if self.damage_indicator_fade > 0:
-            self.damage_indicator.set_alpha(self.damage_indicator_fade)
-            screen.blit(self.damage_indicator, (screen_pos[0], screen_pos[1] - height - self.damage_indicator_height))
+            # render any active damage indicators
+            if self.damage_indicator_fade > 0:
+                self.damage_indicator.set_alpha(self.damage_indicator_fade)
+                screen.blit(self.damage_indicator, (screen_pos[0], screen_pos[1] - height - self.damage_indicator_height))
 
         if self.active_skill is not None:
             self.active_skill.render(screen)
@@ -249,8 +269,8 @@ class Character(entity.Entity):
         self.skill_interface.set_active(selected)
         self.selected_skill_id = None
         if selected:
-            if self.has_move:
-                self.current_map.display_movement(self)
+            if self.action_points > 0:
+                self.current_map.display_movement(self.position, self.get_movement())
             return self
         return None
 
@@ -283,9 +303,9 @@ class Character(entity.Entity):
 
     def start_of_round_update(self):
         if not self.knocked_out:
-            self.has_move = True
-            self.has_action = True
+            self.action_points = 2
             self.accepting_input = True
+            self.used_skill = False
             for effect in self.status_effects:
                 effect.on_start_turn()
             self.effect_cleanup()
@@ -309,22 +329,22 @@ class Character(entity.Entity):
         return self.commit_move(path)
 
     def commit_move(self, path):
-        if self.has_move and len(path) > 1:
+        if self.action_points > 0 and len(path) > 1:
             self.path = path
             self.position = [path[-1][0], path[-1][1]]
             self.current_map.z_order_sort_entities()
             self.visual_position = path[0]
             self.accepting_input = False
-            self.has_move = False
+            self.action_points -= 1
             return True
         self.finish_move()
         return False
 
     def use_action(self):
         self.current_map.clear_tinted_tiles()
-        self.has_action = False
-        self.has_move = False
-        self.accepting_input = False
+        self.action_points -= 1
+        self.used_skill = True
+        self.set_selected(True)
 
     def use_bonus_action(self):
         if self.has_bonus_action:
@@ -369,7 +389,7 @@ class Character(entity.Entity):
         return False
 
     def roll_to_hit(self, accuracy):
-        evasion = randint(0, 99)
+        evasion = randint(0, 99) + self.get_data(CharacterModifiers.evasion)
         if evasion < accuracy:
             for effect in self.status_effects:
                 effect.on_self_hit()
@@ -384,7 +404,7 @@ class Character(entity.Entity):
             return True
         return False
 
-    def damage(self, amount, tags):
+    def damage(self, amount, tags=None):
         amount -= self.get_data(CharacterKeys.armor)
         if amount > 0:
             self.health -= amount
@@ -469,8 +489,8 @@ class AICharacter(Character):
 
     def ai_move(self):
         # AI for stupid melee enemies
-        if self.has_move:
-            move = self.get_data(CharacterKeys.movement)
+        if self.action_points > 0:
+            move = self.get_movement()
             all_moves = self.current_map.find_all_paths(self.position, move)
             closest_target_distance = 99999
             closest_target = None
@@ -529,7 +549,7 @@ class AICharacter(Character):
         return False
 
     def use_skills(self):
-        if self.has_action:
+        if self.action_points > 0:
             self.selected_skill_id = 0
             attack_tiles = self.skills[0].targetable_tiles()
             attack_targets = []
@@ -560,8 +580,8 @@ class AICharacter(Character):
 
     def start_of_round_update(self):
         self.AI_active = False
-        self.has_move = True
-        self.has_action = True
+        self.action_points = 2
+        self.used_skill = False
         for effect in self.status_effects:
             effect.on_end_turn()
         self.effect_cleanup()

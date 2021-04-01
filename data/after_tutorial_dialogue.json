@@ -1,0 +1,139 @@
+{
+  "lines": [
+    {
+      "speaker": "Genevieve",
+      "portrait": "genevieve_portrait",
+      "text": "Thank you for your help. I'm Genevieve."
+    },
+    {
+      "speaker": "Amelia",
+      "portrait": "amelia_portrait",
+      "text": "I'm Amelia."
+    },
+    {
+      "speaker": "Marcus",
+      "portrait": "marcus_portrait",
+      "text": "And I'm Marcus. We're part of Cronna Cape's city guard."
+    },
+    {
+      "speaker": "Genevieve",
+      "text": "City guards? I thought you guys didn't patrol around this part of the city."
+    },
+    {
+      "speaker": "Marcus",
+      "text": "We don't. The only reason we're here is to get at this guy."
+    },
+    {
+      "speaker": "Genevieve",
+      "text": "Oh, did Faust threaten you too?"
+    },
+    {
+      "speaker": "Marcus",
+      "text": "He tried to kill me, and I want to find out why."
+    },
+    {
+      "speaker": "Amelia",
+      "text": "Or at least get some revenge. Looks like you want the same thing Genevieve, considering how you blasted him. Where did you get a magical catalyst that strong?"
+    },
+    {
+      "speaker": "Genevieve",
+      "text": "This? It belongs to my family. They brought it with them when they evacuated Bridhurst."
+    },
+    {
+      "speaker": "Marcus",
+      "text": "You're a refugee from Bridhurst? You're lucky to have gotten out alive before, well..."
+    },
+    {
+      "speaker": "Amelia",
+      "text": "The whole country was overrun by monsters! Did you see a monster? What did it look like?"
+    },
+    {
+      "speaker": "Genevieve",
+      "text": "Well, um, I was really young at the time and uh-"
+    },
+    {
+      "speaker": "Marcus",
+      "text": "I know you're curious Amelia, but don't make her uncomfortable. Why don't you interrogate Faust instead? It's what we came here for."
+    },
+    {
+      "speaker": "Amelia",
+      "text": "You're letting me do the interrogation?"
+    },
+    {
+      "speaker": "Marcus",
+      "text": "Amelia, he tried to kill me. I don't care how rough you are with him."
+    },
+    {
+      "speaker": "Amelia",
+      "text": "Got it."
+    },
+    {
+      "comment": "Amelia kicks Faust and wakes him up off the ground against the wall.",
+      "text": "Hey scumbag! Wake up!"
+    },
+    {
+      "speaker": "Faust",
+      "text": "Ugh. What the heck are a couple of guards doing here? I thought you guys didn't care what happened over here."
+    },
+    {
+      "speaker": "Amelia",
+      "text": "I'm the one asking questions. Why did you attack Marcus? What are you threatening people?"
+    },
+    {
+      "speaker": "Faust",
+      "text": "I'm just trying to get people on our side. The side of Bridhurst. Getting back what we once had."
+    },
+    {
+      "speaker": "Amelia",
+      "text": "Through murder and extortion? Don't act so noble. Why don't I knock that smug look off your face."
+    },
+    {
+      "speaker": "Faust",
+      "text": "You'll regret this. I already have people on my side you know. Very powerful people."
+    },
+    {
+      "speaker": "Marcus",
+      "text": "Oh, really? Did they tell you to attack me?"
+    },
+    {
+      "speaker": "Faust",
+      "text": "Hello Marcus. Must be nice being the guard captain's son. You never have to worry about any consequences of your actions, you can just have your old man Hammond bail you out. It was nice to be able to shock a spoiled brat like you with reality."
+    },
+    {
+      "speaker": "Marcus",
+      "text": "You don't know me or my father."
+    },
+    {
+      "speaker": "Faust",
+      "text": "Is that so?"
+    },
+    {
+      "speaker": "Genevieve",
+      "text": "Faust. You used to be so nice. What happened?"
+    },
+    {
+      "speaker": "Faust",
+      "text": "I realized I didn't have to deal with being looked down on."
+    },
+    {
+      "speaker": "Genevieve",
+      "text": "You're going to have to deal with being in jail instead."
+    },
+    {
+      "speaker": "Faust",
+      "text": "You can't imprison me, my allies will see to that. And even if your could it would accomplish nothing. They would just send someone else to the docks tomorrow night."
+    },
+    {
+      "speaker": "Amelia",
+      "text": "Who said anything about jail? There's more than one way to make sure you stay where you belong."
+    },
+    {
+      "speaker": "Marcus",
+      "text": "Yes, we aren't exactly working by the book tonight."
+    },
+    {
+      "speaker": "Genevieve",
+      "text": "Wait, what did he just say about tomorrow night?"
+    }
+  ]
+}

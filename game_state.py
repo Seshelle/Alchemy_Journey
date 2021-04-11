@@ -25,10 +25,6 @@ def start_expedition(player_data, inventory, modifiers):
 
 def update_player(player):
     player_data = GameState.player_characters[player.name]
-    saved_health = player.health
-    if saved_health <= 0:
-        saved_health = 1
-    player_data["current health"] = saved_health
     player_data["current mana"] = player.mana
 
 

@@ -8,6 +8,7 @@ import tilemap
 
 
 class SkillKeys:
+    levels = "levels"
     description = "desc"
     name = "name"
     code = "code"
@@ -20,6 +21,7 @@ class SkillKeys:
     max_heal = "max heal"
     crit_chance = "crit chance"
     mana_cost = "mana cost"
+    cooldown = "cooldown"
     tags = "tags"
     sound = "sound"
 
@@ -37,6 +39,7 @@ class SkillTags:
     bonus_action = "bonus action"
     free_action = "free action"
     no_target = "no target"
+    cooldown = "cooldown"
 
 
 skill_list = {}
@@ -82,7 +85,7 @@ class Skill:
         appearance = "images/icons/skill_icon.png"
         # TODO: Get skill image file from json
         self.appearance = pygame.image.load(appearance)
-        self.duration = 100
+        self.duration = 300
         self.age = 0
         self.skill_location = None
 
@@ -112,7 +115,7 @@ class Skill:
         return False
 
     def can_use_skill(self):
-        if self.user.mana >= self.mana_cost:
+        if self.user.get_data("current mana") >= self.mana_cost:
             if self.has_tag(SkillTags.free_action):
                 return True
             if self.has_tag(SkillTags.bonus_action):

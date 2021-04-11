@@ -27,6 +27,48 @@
 			"skills":[
 				"claw"
 			]
+		},
+		{
+			"team":1,
+			"spawn x":25,
+			"spawn y":15,
+			"appearance":"images/tile041.png",
+			"avatar":"images/tile041.png",
+			"name":"Erina",
+			"height":1.5,
+			"health":6,
+			"movement":5,
+			"skills":[
+				"claw"
+			]
+		},
+		{
+			"team":1,
+			"spawn x":25,
+			"spawn y":12,
+			"appearance":"images/tile041.png",
+			"avatar":"images/tile041.png",
+			"name":"Chaotic Mage",
+			"height":1.5,
+			"health":6,
+			"movement":5,
+			"skills":[
+				"chaotic bolt"
+			]
+		},
+		{
+			"team":1,
+			"spawn x":26,
+			"spawn y":12,
+			"appearance":"images/tile041.png",
+			"avatar":"images/tile041.png",
+			"name":"Orderly Mage",
+			"height":1.5,
+			"health":6,
+			"movement":5,
+			"skills":[
+				"order bolt"
+			]
 		}
 	]
 }

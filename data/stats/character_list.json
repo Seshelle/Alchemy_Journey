@@ -1,7 +1,7 @@
 {
 	"marcus":{
 		"name":"Marcus",
-		"appearance":"images/tile041.png",
+		"appearance":"marcus",
 		"avatar":"images/tile041.png",
 		"height":1.5,
 		"health":20,
@@ -19,7 +19,7 @@
 	},
 	"amelia":{
 		"name":"Amelia",
-		"appearance":"images/tile041.png",
+		"appearance":"amelia",
 		"avatar":"images/tile041.png",
 		"height":1.5,
 		"health":20,
@@ -34,7 +34,7 @@
 	},
 	"bradley":{
 		"name":"Bradley",
-		"appearance":"images/tile041.png",
+		"appearance":"bradley",
 		"avatar":"images/tile041.png",
 		"height":1.5,
 		"health":30,
@@ -51,7 +51,7 @@
 	},
 	"genevieve":{
 		"name":"Genevieve",
-		"appearance":"images/tile041.png",
+		"appearance":"genevieve",
 		"avatar":"images/tile041.png",
 		"height":1.5,
 		"health":20,
@@ -66,7 +66,7 @@
 	},
 	"victoria":{
 		"name":"Victoria",
-		"appearance":"images/tile041.png",
+		"appearance":"victoria",
 		"avatar":"images/tile041.png",
 		"height":1.5,
 		"health":20,

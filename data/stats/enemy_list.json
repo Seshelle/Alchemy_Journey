@@ -1,115 +1,144 @@
 {
-	"normal enemies":{
-		"basic":[
-			"basic",
-			"swarmling",
-			"fodder",
-			"grunt"
-		],
-		"enforcer":[
-			"soldier",
-			"scout",
-			"beast",
-			"gorer"
-		]
+	"groups": {
+		"pack leader": ["stinger"],
+		"golem": ["plate bug"],
+		"brute": ["wisp"],
+		"cobra": ["hornet"]
 	},
-	"elite enemies":{
-		"basic":[
-			"elite basic",
-			"elite swarmling"
-		]
+	"unfinished groups": {
+		"charger": []
 	},
-	"basic":{
-		"name":"Monster",
-		"appearance":"images/tile041.png",
+	"generic": [
+		"rat"
+	],
+	"rat":{
+		"comment": "these are default monster stats",
+		"name":"Rat",
+		"appearance":"default",
+		"quantity": 1,
 		"health":12,
+		"mana": 12,
+		"movement": 4,
+		"action points": 2,
 		"skills":[
 			"claw"
 		]
 	},
-	"elite basic":{
-		"name":"Elite",
-		"appearance":"images/tile041.png",
-		"health":30,
-		"movement":6,
+	"stinger": {
+		"name": "Stinger",
 		"skills":[
-			"enhanced claw"
+			"sting"
 		]
 	},
-	"swarmling":{
-		"name":"Swarmling",
-		"appearance":"images/tile041.png",
-		"health":2,
+	"pack leader": {
+		"name":"Pack Leader",
+		"health":15,
+		"movement": 5,
 		"skills":[
-			"nibble"
-		]
+			"claw"
+		],
+		"upgrades": {
+			"claw": 2
+		}
 	},
-	"elite swarmling":{
-		"name":"PLACEHOLDER",
-		"appearance":"images/tile041.png",
-		"health":2,
-		"movement":7,
+	"golem": {
+		"name": "Golem",
+		"health":16,
+		"armor": 2,
+		"movement": 3,
 		"skills":[
-			"chomp"
-		]
+			"bash"
+		],
+		"upgrades": {
+			"bash": 3
+		}
 	},
-	"fodder":{
-		"name":"Decrepit",
-		"appearance":"images/tile041.png",
-		"health":4,
+	"brute": {
+		"name": "Brute",
+		"health":20,
 		"skills":[
-			"punch"
-		]
+			"claw"
+		],
+		"upgrades": {
+			"claw": 2
+		}
 	},
-	"grunt":{
-		"name":"Servant",
-		"appearance":"images/tile041.png",
-		"health":7,
+	"charger": {
+		"name":"Charger",
 		"skills":[
-			"bite"
-		]
-	},
-	"slinger":{
-		"name":"Slinger",
-		"appearance":"images/tile041.png",
-		"health":12,
-		"skills":[
-			"spike launch",
+			"charge",
 			"bash"
 		]
 	},
-	"soldier":{
-		"name":"Soldier",
-		"appearance":"images/tile041.png",
-		"health":14,
-		"movement":6,
+	"cobra": {
+		"name":"Cobra",
+		"movement": 5,
 		"skills":[
-			"sharpened claw"
+			"spit"
 		]
 	},
-	"scout":{
-		"name":"Scout",
-		"appearance":"images/tile041.png",
-		"health":12,
-		"movement":8,
-		"skills":[
-			"sharpened claw"
+	"summoner": {
+		"name": "Summoner",
+		"skills": [
+			"summon wisp",
+			"burn"
 		]
 	},
-	"beast":{
-		"name":"Beast",
-		"appearance":"images/tile041.png",
-		"health":20,
-		"skills":[
-			"chomp"
+	"wisp": {
+		"name": "Summoner",
+		"health": 4,
+		"skills": [
+			"flare"
 		]
 	},
-	"gorer":{
-		"name":"Gorer",
-		"appearance":"images/tile041.png",
-		"health":12,
-		"skills":[
-			"gore"
+	"plated hive": {
+		"name": "Plated Hive",
+		"armor": 1,
+		"skills": [
+			"summon plate bug",
+			"zap"
+		]
+	},
+	"plate bug": {
+		"name": "Plate Bug",
+		"quantity": 3,
+		"health": 2,
+		"skills": [
+			"obscure",
+			"bash"
+		]
+	},
+	"hornet hive": {
+		"name": "Hornet Hive",
+		"movement": 5,
+		"skills": [
+			"summon hornet",
+			"poison cloud"
+		]
+	},
+	"hornet": {
+		"name": "Hornet",
+		"quantity": 2,
+		"movement": 5,
+		"health": 4,
+		"skills": [
+			"sting"
+		]
+	},
+	"amalgam": {
+		"name": "Amalgam",
+		"health": 20,
+		"skills": [
+			"enrage",
+			"claw"
+		]
+	},
+	"maw": {
+		"name": "Maw",
+		"health": 6,
+		"movement": 6,
+		"skills": [
+			"bite"
 		]
 	}
 }

@@ -7,22 +7,26 @@ import user_interface
 class Entity:
     def __init__(self, position, current_map, entity_data):
         self.current_map = current_map
-        self.data = entity_data
+        self.data = entity_data.copy()
+
         # load appearance
         if "appearance" in entity_data.keys():
-            self.appearance = pygame.image.load(entity_data["appearance"]).convert()
-            self.appearance.set_colorkey(pygame.Color("black"))
+            # self.appearance = pygame.image.load(entity_data["appearance"]).convert()
+            self.image_directory = "images/entity/" + entity_data["appearance"] + "/"
         else:
-            self.appearance = None
+            self.image_directory = "images/entity/default/"
+        self.appearance = pygame.image.load(self.image_directory + "default.png").convert()
+        self.appearance.set_colorkey(pygame.Color("black"))
+
         # position is real gameplay position, in path coordinates
         self.position = [position[0], position[1]]
-        self.height = 1.5 * tilemap.tile_extent[1]
         if "height" in entity_data:
             self.height = entity_data["height"] * tilemap.tile_extent[1]
+        else:
+            self.height = 1.5 * tilemap.tile_extent[1]
         # determines whether you can currently command this entity
         self.ally = False
         self.accepting_input = False
-        self.intelligent = False
         self.delete = False
 
     def __lt__(self, other):

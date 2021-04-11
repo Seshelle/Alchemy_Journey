@@ -16,7 +16,7 @@
 		{
 			"spawn x":5,
 			"spawn y":0,
-			"appearance":"images/tile041.png",
+			"appearance":"victoria",
 			"height":1.5,
 			"message":"E: TALK",
 			"dialogue":"data/tutorial_dialogue.json"
@@ -27,7 +27,7 @@
 			"type":"embark",
 			"spawn x":7,
 			"spawn y":-3,
-			"appearance":"images/tile039.png",
+			"appearance":"default",
 			"height":1.5,
 			"message":"E: EMBARK"
 		},
@@ -35,7 +35,7 @@
 			"type":"armory",
 			"spawn x":5,
 			"spawn y":-3,
-			"appearance":"images/tile039.png",
+			"appearance":"default",
 			"height":1.5,
 			"message":"E: MANAGE"
 		}

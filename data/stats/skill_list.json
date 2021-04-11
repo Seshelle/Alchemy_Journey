@@ -3,7 +3,7 @@
 		"name":"Lucky Bolt",
 		"sound":"game_sounds/Lucky_BoltSound.wav",
 		"code":"Default",
-		"desc":"Shoots a bolt with high critical chance. It applies a random small debuff to its target.",
+		"desc":"Shoots a bolt with high critical chance. Applies a random small debuff to its target.",
 		"tags":[
 			"magical",
 			"ranged",
@@ -14,33 +14,33 @@
 			"can stack":true,
 			"duration":5
 		},
+		"range":8,
+		"damage":[2,6],
+		"accuracy":85,
+		"crit chance": 10,
+		"appearance":"none",
 		"levels": [
 			{
 				"level": 2,
-				"damage": [3, 8],
+				"damage": [3,6],
 				"crit chance": 15
 			},
 			{
 				"level": 3,
-				"damage": [3, 9],
+				"damage": [3,8],
 				"crit chance": 15
 			},
 			{
 				"level": 4,
-				"damage": [3, 10],
+				"damage": [3,9],
 				"crit chance": 20
 			},
 			{
 				"level": 5,
-				"damage": [3, 11],
+				"damage": [5,9],
 				"crit chance": 25
 			}
-		],
-		"range":8,
-		"damage":[3,7],
-		"accuracy":85,
-		"crit chance": 10,
-		"appearance":"none"
+		]
 	},
 	"magic missile":{
 		"name":"Magic Missile",
@@ -89,6 +89,11 @@
 		"code":"MoveSkill",
 		"desc":"Use an action to move in a straight line to a new position.",
 		"range":3,
+		"mana cost": 1,
+		"tags":[
+			"movement",
+			"aimed"
+		],
 		"levels":[
 			{
 				"level": 2,
@@ -108,11 +113,6 @@
 				"range": 6,
 				"mana cost": 0
 			}
-		],
-		"mana cost": 1,
-		"tags":[
-			"movement",
-			"aimed"
 		]
 	},
 	"harry":{
@@ -125,8 +125,7 @@
 			"ranged",
 			"area",
 			"aimed",
-			"multi hit",
-			"unfinished"
+			"multi hit"
 		],
 		"on hit effect":{
 			"code":"RandomMinorDebuff",
@@ -155,14 +154,14 @@
 	"power shot":{
 		"name":"Power shot",
 		"code":"Default",
-		"desc":"Highly damaging arrow. Deals extra damage if you have not moved.",
+		"desc":"Highly damaging arrow. Deals extra damage if the user has not moved.",
 		"tags":[
 			"piercing",
 			"ranged",
 			"unfinished"
 		],
 		"range":15,
-		"damage":[5,8],
+		"damage":[5,7],
 		"accuracy":95,
 		"appearance":"none"
 	},
@@ -170,7 +169,7 @@
 		"name":"Quick Draw",
 		"sound":"game_sounds/Quick_DrawSound.wav",
 		"code":"Default",
-		"desc":"A quick shot that takes no action, once per turn.",
+		"desc":"A quick shot that takes no action once per turn.",
 		"tags":[
 			"piercing",
 			"ranged",
@@ -217,7 +216,7 @@
 		"name":"Stun",
 		"sound":"game_sounds/StunSound.wav",
 		"code":"Default",
-		"desc":"Slams your weapon onto an enemy's skull, forcing it to skip its next turn.",
+		"desc":"Slams your weapon onto an enemy's skull, taking away its next two action points.",
 		"tags":[
 			"crushing",
 			"melee",
@@ -247,23 +246,13 @@
 	"tremor":{
 		"name":"Tremor",
 		"code":"Default",
-		"desc":"Creates a blast that comes from underground. The blast ignores walls.",
+		"desc":"Creates a blast that comes from underground. The blast leaves behind slowing terrain that doubles movement costs.",
 		"tags":[
 			"crushing",
 			"aimed",
 			"area",
-			"indirect"
+			"unfinished"
 		],
-		"on hit effect":{
-			"code":"Modify",
-			"name":"Slowed",
-			"desc":"Movement is reduced by 1 per stack.",
-			"stat":"movement",
-			"change":-1,
-			"can stack":true,
-			"stacks":3,
-			"duration":3
-		},
 		"damage":[3,6],
 		"area":3,
 		"range":7,
@@ -321,7 +310,7 @@
 			"duration":3
 		},
 		"range":10,
-		"damage":[1,3],
+		"damage":[2,3],
 		"accuracy":90,
 		"appearance":"none"
 	},
@@ -341,145 +330,198 @@
 		"range":10,
 		"appearance":"none"
 	},
+	"order bolt":{
+		"name":"Order Bolt",
+		"sound":"game_sounds/Lucky_BoltSound.wav",
+		"code":"Default",
+		"desc":"Shoots a bolt with high accuracy but no critical chance.",
+		"tags":[
+			"magical",
+			"ranged"
+		],
+		"range":8,
+		"damage":[3,3],
+		"accuracy":95,
+		"crit chance": 0,
+		"appearance":"none"
+	},
+	"chaotic bolt":{
+		"name":"Chaotic Bolt",
+		"sound":"game_sounds/Lucky_BoltSound.wav",
+		"code":"Default",
+		"desc":"Shoots a bolt with high critical chance. Applies a random small debuff to its target.",
+		"tags":[
+			"magical",
+			"ranged",
+			"debuff"
+		],
+		"on hit effect":{
+			"code":"RandomMinorDebuff",
+			"can stack":true,
+			"duration":1
+		},
+		"range":8,
+		"damage":[2,4],
+		"accuracy":70,
+		"crit chance": 10,
+		"appearance":"none"
+	},
 	"claw":{
 		"name":"Claw",
 		"sound":"game_sounds/ClawSound.wav",
 		"code":"Default",
-		"desc":"Slashes a target with claws.",
+		"desc":"Slashes at a target, dealing moderate damage.",
 		"tags":[
 			"melee",
 			"slashing"
 		],
 		"damage":[5,7],
 		"accuracy":80,
-		"appearance":"none"
+		"appearance":"none",
+		"levels": [
+			{
+				"level": 2,
+				"name": "Enhanced Claw",
+				"damage": [7,9],
+				"accuracy": 85
+			}
+		]
 	},
-	"quick claw":{
-		"name":"Quick Claw",
-		"sound":"game_sounds/Quick_ClawSound.wav",
-		"code":"Default",
-		"desc":"Slashes a target with claws.",
-		"tags":[
-			"melee",
-			"slashing"
-		],
-		"damage":[4,8],
-		"accuracy":90,
-		"crit chance":10,
-		"appearance":"none"
-	},
-	"sharpened claw":{
-		"name":"Sharpened Claw",
-		"sound":"game_sounds/Sharpened_ClawSound.wav",
-		"code":"Default",
-		"desc":"Slashes at a foe with sharp claws.",
-		"tags":[
-			"melee",
-			"slashing"
-		],
-		"damage":[5,7],
-		"accuracy":85,
-		"appearance":"none"
-	},
-	"enhanced claw":{
-		"name":"Enhanced Claw",
-		"sound":"game_sounds/Enhanced_ClawSound.wav",
-		"code":"Default",
-		"desc":"Slashes at a foe with magical claws.",
-		"tags":[
-			"melee",
-			"slashing"
-		],
-		"damage":[7,9],
-		"accuracy":90,
-		"appearance":"none"
-	},
-	"nibble":{
-		"name":"Nibble",
-		"code":"Default",
-		"desc":"Bites a foe with small jaws.",
-		"tags":[
-			"melee",
-			"piercing"
-		],
-		"damage":[3,4],
-		"accuracy":65,
-		"appearance":"none"
-	},
-	"punch":{
-		"name":"Punch",
+	"bash": {
+		"name":"Bash",
 		"sound":"game_sounds/PunchSound.wav",
 		"code":"Default",
-		"desc":"Attacks a foe with fists.",
+		"desc":"Bludgeons a target, dealing low damage.",
 		"tags":[
 			"melee",
-			"crushing"
-		],
-		"damage":[3,5],
-		"accuracy":70,
-		"appearance":"none"
-	},
-	"bite":{
-		"name":"Bite",
-		"code":"Default",
-		"desc":"Bites a foe with strong jaws.",
-		"tags":[
-			"melee",
-			"piercing"
-		],
-		"damage":[5,6],
-		"accuracy":75,
-		"appearance":"none"
-	},
-	"bash":{
-		"name":"Bash",
-		"code":"Default",
-		"desc":"Uses whatever is on hand to bash a foe.",
-		"tags":[
-			"melee",
-			"crushing"
+			"bludgeoning"
 		],
 		"damage":[2,3],
-		"accuracy":90,
-		"appearance":"none"
+		"accuracy":95,
+		"appearance":"none",
+		"levels": [
+			{
+				"level": 2,
+				"name": "Collision",
+				"damage": [3,4],
+				"accuracy": 75,
+				"desc":"Fly into an enemy, dealing low damage."
+			},
+			{
+				"level": 3,
+				"name": "Smash",
+				"damage": [8,10],
+				"accuracy": 80,
+				"desc":"Bludgeons a target, dealing high damage."
+			}
+		]
 	},
-	"chomp":{
-		"name":"Chomp",
+	"charge": {
+		"name":"Charge",
+		"sound":"game_sounds/PunchSound.wav",
 		"code":"Default",
-		"desc":"Bites deep into a nearby foe.",
+		"desc":"Charge towards an enemy, dealing massive damage.",
 		"tags":[
 			"melee",
-			"piercing"
+			"piercing",
+			"movement",
+			"unfinished"
 		],
-		"damage":[5,7],
-		"accuracy":80,
+		"damage":[9,12],
+		"accuracy":90,
+		"mana cost": 6,
 		"appearance":"none"
 	},
-	"spike launch":{
-		"name":"Spike Launch",
+	"spit": {
+		"name": "Spit",
+		"sound":"game_sounds/PunchSound.wav",
 		"code":"Default",
-		"desc":"Shoots a spike into a foe.",
+		"desc":"Spit poison on an enemy.",
 		"tags":[
 			"ranged",
-			"piercing"
+			"aimed",
+			"poison"
 		],
-		"range":8,
-		"damage":[5,6],
-		"accuracy":60,
+		"on hit effect": {
+			"code": "StackingPoison",
+			"stacks": 2
+		},
+		"damage":[3,5],
+		"accuracy":75,
+		"range": 6,
 		"appearance":"none"
 	},
-	"gore":{
-		"name":"Gore",
-		"sound":"game_sounds/GoreSound.wav",
+	"obscure": {
+		"name": "Obscure",
+		"code": "Default",
+		"desc": "Protects the user and all nearby, giving +1 armor for 1 turn.",
+		"tags": [
+			"area",
+			"no target",
+			"buff",
+			"bonus action"
+		],
+		"on hit effect": {
+			"name": "Protected",
+			"desc": "This character is being protected, giving them additional armor.",
+			"code": "Modify",
+			"stat": "armor",
+			"change": 1,
+			"can stack": true
+		},
+		"range": 0,
+		"area": 1.5
+	},
+	"sting": {
+		"name": "Sting",
+		"sound":"game_sounds/PunchSound.wav",
 		"code":"Default",
-		"desc":"Gores an enemy, dealing massive damage.",
+		"desc":"Fire poison a short range at one enemy.",
 		"tags":[
+			"ranged",
+			"aimed",
+			"poison"
+		],
+		"on hit effect": {
+			"code": "StackingPoison"
+		},
+		"damage":[4,6],
+		"accuracy":80,
+		"range": 3,
+		"appearance":"none"
+	},
+	"flare": {
+		"name": "Flare",
+		"code": "Default",
+		"sound":"game_sounds/BurnSound.wav",
+		"desc": "A bright flash that deals damage and reduces accuracy.",
+		"tags": [
+			"melee",
+			"fire",
+			"debuff"
+		],
+		"on hit effect": {
+			"name": "Dazzled",
+			"code": "Modify",
+			"stat": "accuracy",
+			"change": -5,
+			"can stack": true,
+			"duration": 3,
+			"desc": "Accuracy reduced by 5% per stack"
+		},
+		"damage": [2,4],
+		"accuracy": 80
+	},
+	"bite": {
+		"name": "Bite",
+		"code": "Default",
+		"desc": "Chomps down on a target, dealing varying damage.",
+		"tags": [
 			"melee",
 			"piercing"
 		],
-		"damage":[8,11],
-		"accuracy":90,
-		"appearance":"none"
+		"damage": [5,9],
+		"accuracy": 75
 	},
 	"cheating": {
 		"name": "cheating",
@@ -488,7 +530,8 @@
 		"tags":[
 			"ranged",
 			"piercing",
-			"aimed"
+			"aimed",
+			"indirect"
 		],
 		"range": 20,
 		"damage":[1000,1000],

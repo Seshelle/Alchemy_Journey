@@ -4,6 +4,7 @@ import tilemap
 import user_interface
 import math
 from random import randint
+from math import ceil
 import skill_handler
 from skill_handler import SkillKeys
 from dialogue import draw_shadowed_text
@@ -15,13 +16,14 @@ class CharacterKeys:
     name = "name"
     upgrades = "upgrades"
     team = "team"
-    health = "health"
+    max_health = "health"
     armor = "armor"
     current_health = "current health"
     movement = "movement"
     skills = "skills"
-    mana = "mana"
+    max_mana = "mana"
     current_mana = "current mana"
+    action_points = "action points"
 
 
 class CharacterModifiers:
@@ -38,15 +40,15 @@ class Character(entity.Entity):
     def __init__(self, position, current_map, entity_data):
         super().__init__(position, current_map, entity_data)
         self.current_map = current_map
-        # visual position is where it is rendered, like when moving
+
+        # visual position is where it is rendered, separate from actual tile position
         self.visual_position = [position[0], position[1]]
 
         # path the entity is moving along, empty when not moving
         self.path = []
         self.prev_direction = []
 
-        # determines whether you can command this entity
-        self.intelligent = True
+        # determines whether player can command this entity
         self.ally = True
         self.accepting_input = True
         self.selected = False
@@ -63,23 +65,40 @@ class Character(entity.Entity):
         self.show_ui = True
 
         # attributes of this character
-        self.name = entity_data[CharacterKeys.name]
-        self.team = 0
+        self.name = self.data[CharacterKeys.name]
+        if CharacterKeys.max_health not in self.data:
+            self.data[CharacterKeys.max_health] = 12
 
-        self.max_health = entity_data[CharacterKeys.health]
-        self.health = self.max_health
-        if CharacterKeys.team in entity_data:
-            self.team = entity_data[CharacterKeys.team]
-        if CharacterKeys.current_health in entity_data.keys():
-            self.health = entity_data[CharacterKeys.current_health]
-        if CharacterKeys.movement not in entity_data.keys():
-            entity_data[CharacterKeys.movement] = 5
-        self.max_mana = 10
-        if CharacterKeys.mana in entity_data.keys():
-            self.max_mana = entity_data[CharacterKeys.mana]
-        self.mana = self.max_mana
-        if CharacterKeys.current_mana in entity_data.keys():
-            self.mana = entity_data[CharacterKeys.current_mana]
+        max_health = self.get_data(CharacterKeys.max_health)
+        if CharacterKeys.current_health not in self.data:
+            self.data[CharacterKeys.current_health] = max_health
+        else:
+            current_health = self.data[CharacterKeys.current_health]
+            if current_health > max_health:
+                current_health = max_health
+            elif current_health < 1:
+                current_health = 1
+            self.data[CharacterKeys.current_health] = current_health
+
+        if CharacterKeys.movement not in self.data:
+            self.data[CharacterKeys.movement] = 4
+
+        if CharacterKeys.max_mana not in self.data:
+            self.data[CharacterKeys.max_mana] = 12
+
+        max_mana = self.get_data(CharacterKeys.max_mana)
+        if CharacterKeys.current_mana not in self.data:
+            self.data[CharacterKeys.current_mana] = max_mana
+        else:
+            mana = self.data[CharacterKeys.current_mana]
+            if mana > max_mana:
+                mana = max_mana
+            elif mana < 0:
+                mana = 0
+            self.data[CharacterKeys.current_mana] = mana
+
+        if CharacterKeys.action_points not in self.data:
+            self.data[CharacterKeys.action_points] = 2
 
         # create health bar image
         self.stat_text = pygame.font.SysFont(None, 24)
@@ -115,7 +134,7 @@ class Character(entity.Entity):
         self.skill_interface = user_interface.UserInterface()
         self.skill_interface.add_image_button(
             (0, 0.9, 0.2, 0.1),
-            entity_data[CharacterKeys.name],
+            self.data[CharacterKeys.name],
             "avatar", is_button=False
         )
         self.skill_interface.set_active(False)
@@ -123,10 +142,26 @@ class Character(entity.Entity):
         skill_file = open("data/stats/skill_list.json")
         skill_list = json.load(skill_file)
         skill_file.close()
-        for skill_name in entity_data[CharacterKeys.skills]:
-            if CharacterKeys.upgrades not in entity_data or skill_name in entity_data[CharacterKeys.upgrades]:
+        for skill_name in self.data[CharacterKeys.skills]:
+            skill_data = None
+            if CharacterKeys.upgrades not in self.data:
+                # if no skill levels are defined, default them to level 1
                 skill_data = skill_list[skill_name]
-                self.add_skill(skill_handler.skill_list[skill_data[SkillKeys.code]](skill_data, self))
+            elif skill_name in self.data[CharacterKeys.upgrades]:
+                # if skill is above level one, upgrade it according to its level data
+                skill_data = skill_list[skill_name]
+                skill_level = self.data[CharacterKeys.upgrades][skill_name]
+                if skill_level > 1:
+                    level_data = skill_data[SkillKeys.levels][skill_level - 2]
+                    for upgrade in level_data:
+                        skill_data[upgrade] = level_data[upgrade]
+
+            if skill_data is not None:
+                if SkillKeys.code in skill_data:
+                    skill_code = skill_data[SkillKeys.code]
+                else:
+                    skill_code = "Default"
+                self.add_skill(skill_handler.skill_list[skill_code](skill_data, self))
 
         # skill animation state
         self.active_skill = None
@@ -142,8 +177,14 @@ class Character(entity.Entity):
     def get_movement(self):
         movement = self.get_data(CharacterKeys.movement)
         if self.action_points == 1:
-            movement /= 2
+            movement = movement / 2 + 0.5
         return movement
+
+    def get_total_movement(self):
+        if self.has_actions():
+            movement = self.get_data(CharacterKeys.movement)
+            return movement * (self.action_points - 1) + movement / 2 + 0.5
+        return 0
 
     def has_actions(self):
         return self.action_points > 0
@@ -198,6 +239,8 @@ class Character(entity.Entity):
     def finish_move(self):
         self.path.clear()
         self.accepting_input = not self.knocked_out
+        if self.accepting_input and self.selected:
+            self.set_selected(True)
 
     def render(self, screen, masks=None):
         screen_pos = tilemap.path_to_screen(self.visual_position)
@@ -233,19 +276,23 @@ class Character(entity.Entity):
 
     def update_health_and_mana(self):
         self.health_bar.fill(self.missing_health_color)
-        bar_portion = self.bar_width * (self.health / self.max_health)
+        max_health = self.get_data(CharacterKeys.max_health)
+        health = self.get_data(CharacterKeys.current_health)
+        bar_portion = self.bar_width * (health / max_health)
         pygame.draw.rect(self.health_bar, self.health_color, (0, 0, bar_portion, self.bar_height))
         draw_text(self.health_bar,
-                  str(self.health) + "/" + str(self.max_health),
+                  str(health) + "/" + str(max_health),
                   pygame.Color("black"),
                   (0, 2, self.bar_width, self.bar_height),
                   self.stat_text)
 
         self.mana_bar.fill(self.missing_health_color)
-        bar_portion = self.bar_width * (self.mana / self.max_mana)
+        mana = self.get_data(CharacterKeys.current_mana)
+        max_mana = self.get_data(CharacterKeys.max_mana)
+        bar_portion = self.bar_width * (mana / max_mana)
         pygame.draw.rect(self.mana_bar, self.mana_color, (0, 0, bar_portion, self.bar_height))
         draw_text(self.mana_bar,
-                  str(self.mana) + "/" + str(self.max_mana),
+                  str(mana) + "/" + str(max_mana),
                   pygame.Color("white"),
                   (0, 2, self.bar_width, self.bar_height),
                   self.stat_text)
@@ -270,7 +317,7 @@ class Character(entity.Entity):
         self.selected_skill_id = None
         if selected:
             if self.action_points > 0:
-                self.current_map.display_movement(self.position, self.get_movement())
+                self.current_map.display_movement(self.position, self.get_movement(), self.get_total_movement())
             return self
         return None
 
@@ -303,7 +350,7 @@ class Character(entity.Entity):
 
     def start_of_round_update(self):
         if not self.knocked_out:
-            self.action_points = 2
+            self.action_points = self.get_data(CharacterKeys.action_points)
             self.accepting_input = True
             self.used_skill = False
             for effect in self.status_effects:
@@ -326,16 +373,28 @@ class Character(entity.Entity):
     def move_order(self, path):
         if not self.accepting_input:
             return False
-        return self.commit_move(path)
+        # calculate the number of actions it will take
+        actions = ceil(self.path_distance(path) / self.get_movement())
+        return self.commit_move(path, actions)
 
-    def commit_move(self, path):
+    def path_distance(self, path):
+        prev_space = self.position
+        length = 0
+        for space in path:
+            if prev_space[0] != space[0] and prev_space[1] != space[1]:
+                length += 1.414
+            elif prev_space[0] != space[0] or prev_space[1] != space[1]:
+                length += 1
+        return length
+
+    def commit_move(self, path, actions=-1):
         if self.action_points > 0 and len(path) > 1:
             self.path = path
             self.position = [path[-1][0], path[-1][1]]
             self.current_map.z_order_sort_entities()
             self.visual_position = path[0]
             self.accepting_input = False
-            self.action_points -= 1
+            self.action_points -= actions
             return True
         self.finish_move()
         return False
@@ -344,7 +403,8 @@ class Character(entity.Entity):
         self.current_map.clear_tinted_tiles()
         self.action_points -= 1
         self.used_skill = True
-        self.set_selected(True)
+        if self.accepting_input and self.selected:
+            self.set_selected(True)
 
     def use_bonus_action(self):
         if self.has_bonus_action:
@@ -405,24 +465,30 @@ class Character(entity.Entity):
         return False
 
     def damage(self, amount, tags=None):
-        amount -= self.get_data(CharacterKeys.armor)
+        if tags is None or "true" not in tags:
+            amount -= self.get_data(CharacterKeys.armor)
         if amount > 0:
-            self.health -= amount
-            if self.health <= 0:
+            health = self.get_data(CharacterKeys.current_health)
+            health -= amount
+            if health <= 0:
                 self.knockout()
+            self.data[CharacterKeys.current_health] = health
             self.update_health_and_mana()
         self.display_hit("-" + str(amount), pygame.Color("red"))
 
     def heal(self, amount):
         if amount > 0:
-            self.health += amount
-            if self.health > self.max_health:
-                self.health = self.max_health
+            health = self.get_data(CharacterKeys.current_health)
+            health += amount
+            max_health = self.get_data(CharacterKeys.max_health)
+            if health > max_health:
+                health = max_health
+            self.data[CharacterKeys.current_health] = health
             self.update_health_and_mana()
         self.display_hit("+" + str(amount), pygame.Color("green"))
 
     def knockout(self):
-        self.health = 0
+        self.data[CharacterKeys.current_health] = 0
         self.knocked_out = True
         self.accepting_input = False
         self.selected_skill_id = None
@@ -435,11 +501,14 @@ class Character(entity.Entity):
         self.stabilized = True
 
     def add_mana(self, amount):
-        self.mana += amount
-        if self.mana > self.max_mana:
-            self.mana = self.max_mana
-        if self.mana < 0:
-            self.mana = 0
+        mana = self.get_data(CharacterKeys.current_mana)
+        mana += amount
+        max_mana = self.get_data(CharacterKeys.max_mana)
+        if mana > max_mana:
+            mana = max_mana
+        if mana < 0:
+            mana = 0
+        self.data[CharacterKeys.current_mana] = mana
 
     def add_status_effect(self, effect):
         for current_effect in self.status_effects:
@@ -458,6 +527,7 @@ class Character(entity.Entity):
             found = False
             for index, effect in enumerate(self.status_effects):
                 if effect.delete:
+                    self.skill_interface.delete_button(self.status_effects[index].name)
                     del self.status_effects[index]
                     found = True
                     break
@@ -475,7 +545,6 @@ class AICharacter(Character):
         self.manager = ai_manager
         self.manager.add_actor(self)
 
-        self.team = 1
         self.health_color = pygame.Color("red")
         self.update_health_and_mana()
 

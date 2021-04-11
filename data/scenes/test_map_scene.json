@@ -18,21 +18,20 @@
 			"team":1,
 			"spawn x":28,
 			"spawn y":0,
-			"appearance":"images/tile041.png",
+			"appearance":"default",
 			"avatar":"images/tile041.png",
 			"name":"Faust",
 			"height":1.5,
 			"health":6,
 			"movement":5,
 			"skills":[
-				"punch"
+				"bash"
 			]
 		},
 		{
 			"team":1,
 			"spawn x":24,
 			"spawn y":15,
-			"appearance":"images/tile041.png",
 			"avatar":"images/tile041.png",
 			"name":"Thug #1",
 			"height":1.5,
@@ -46,7 +45,6 @@
 			"team":1,
 			"spawn x":24,
 			"spawn y":16,
-			"appearance":"images/tile041.png",
 			"avatar":"images/tile041.png",
 			"name":"Thug #2",
 			"height":1.5,
@@ -60,7 +58,6 @@
 			"team":1,
 			"spawn x":24,
 			"spawn y":17,
-			"appearance":"images/tile041.png",
 			"avatar":"images/tile041.png",
 			"name":"Thug #3",
 			"height":1.5,

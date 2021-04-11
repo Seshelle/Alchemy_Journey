@@ -4,7 +4,6 @@ import game_modes
 import game_state
 import entity
 import character
-from character import CharacterKeys
 import alchemy_settings as a_settings
 import ai_manager
 import user_interface
@@ -576,11 +575,16 @@ class CombatMap(TileMap):
         with open("data/stats/enemy_list.json") as enemy_file:
             enemy_list = json.load(enemy_file)
 
-        # just grab 5 random enemies from enforcer group for now
-        enemy_choices = enemy_list["normal enemies"]["enforcer"]
-        enemy_data = []
-        for i in range(5):
-            enemy_name = random.choice(enemy_choices)
+        # pick a group to add
+        leader = random.choice(list(enemy_list["groups"].keys()))
+        followers = []
+        for enemy in enemy_list["groups"][leader]:
+            followers.append(enemy)
+        for enemy in enemy_list["generic"]:
+            followers.append(enemy)
+        enemy_data = [enemy_list[leader]]
+        for i in range(4):
+            enemy_name = random.choice(followers)
             enemy_data.append(enemy_list[enemy_name])
 
         self.add_entities(enemy_data)
@@ -708,13 +712,13 @@ class CombatMap(TileMap):
             selected_skill = self.selected_character.get_selected_skill()
 
             if self.selected_character.accepting_input and selected_skill is None and \
-                    self.selected_character.action_points > 0:
+                    self.selected_character.has_actions():
                 # calculate a new path whenever destination changes
                 if self.skill_display_update:
                     self.path = self.find_path(
                         self.selected_character.position,
                         self.mouse_coords,
-                        self.selected_character.get_data(CharacterKeys.movement))
+                        self.selected_character.get_total_movement())
 
                 # draw arrows along path in direction of path
                 if len(self.path) > 1:
@@ -961,11 +965,15 @@ class CombatMap(TileMap):
         for c in self.character_list:
             c.reset_display()
 
-    def display_movement(self, position, movement):
-        self.possible_paths = self.find_all_paths(position, movement)
+    def display_movement(self, position, movement, total_move=None):
+        self.possible_paths = self.find_all_paths(position, total_move)
         # show possible movement tiles for selected character
         self.clear_tinted_tiles()
-        self.tinted_tiles[TintColors.green] = self.possible_paths
+        self.tinted_tiles[TintColors.green] = self.find_all_paths(position, movement)
+        if total_move is not None and total_move != movement:
+            self.tinted_tiles[TintColors.yellow] = self.find_all_paths(position, total_move)
+            for tile in self.tinted_tiles[TintColors.green]:
+                self.tinted_tiles[TintColors.yellow].discard(tile)
         # dirty the mouse coordinates so there will be an immediate path update
         self.mouse_coords = (-1, -1)
 
@@ -1232,7 +1240,7 @@ class FreeMoveMap(TileMap):
     def __init__(self, filename):
         super().__init__(filename)
         self.interactive_entities = []
-        self.player = entity.FreeMover([0, 0], self, {"appearance": "images/tile041.png", "height": 1.5})
+        self.player = entity.FreeMover([0, 0], self, {"appearance": "default", "height": 1.5})
         self.add_entity(self.player)
         self.add_entities(filename)
         self.control_entity = None

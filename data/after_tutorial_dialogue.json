@@ -109,15 +109,7 @@
     },
     {
       "speaker": "Genevieve",
-      "text": "Faust. You used to be so nice. What happened?"
-    },
-    {
-      "speaker": "Faust",
-      "text": "I realized I didn't have to deal with being looked down on."
-    },
-    {
-      "speaker": "Genevieve",
-      "text": "You're going to have to deal with being in jail instead."
+      "text": "You're going to jail where you can't hurt us anymore."
     },
     {
       "speaker": "Faust",
@@ -125,15 +117,65 @@
     },
     {
       "speaker": "Amelia",
-      "text": "Who said anything about jail? There's more than one way to make sure you stay where you belong."
+      "text": "Who said anything about jail? There's more than one way to make sure you stay put."
     },
     {
       "speaker": "Marcus",
-      "text": "Yes, we aren't exactly working by the book tonight."
+      "text": "Yes, we aren't exactly working by the book here."
     },
     {
       "speaker": "Genevieve",
       "text": "Wait, what did he just say about tomorrow night?"
+    },
+    {
+      "speaker": "Faust",
+      "text": "Tch."
+    },
+    {
+      "speaker": "Marcus",
+      "text": "He mentioned something about the docks."
+    },
+    {
+      "speaker": "Amelia",
+      "text": "He did, didn't he? Let something slip you shouldn't have, Faust?"
+    },
+    {
+      "speaker": "Faust",
+      "text": "You heard nothing!"
+    },
+    {
+      "text": "Hey Erina! What's taking you so long?"
+    },
+    {
+      "comment": "Faust teleports away.",
+      "move character": {"character": "Faust", "path": [[20, 10]]},
+      "speaker": "Marcus",
+      "text": "He escaped?"
+    },
+    {
+      "speaker": "Genevieve",
+      "text": "He got teleported by someone else. Short range, looks like. They're still nearby!"
+    },
+    {
+      "speaker": "Amelia",
+      "text": "There!"
+    },
+    {
+      "camera pan": [20, 15],
+      "speaker": "Erina",
+      "text": "Perceptive, aren't you? Not that it matters, we'll be leaving shortly."
+    },
+    {
+      "text": "Oh, and Faust? When we get back I'll need to teach you to keep that mouth of your shut."
+    },
+    {
+      "speaker": "Amelia",
+      "text": "You think we'll let you leave?"
+    },
+    {
+      "comment": "Erina summons guards to block the alley they are escaping down.",
+      "speaker": "Erina",
+      "text": "Oh, I believe you will."
     }
   ]
 }

@@ -72,6 +72,7 @@ class StatusEffect:
             self.on_remove()
             self.delete = True
             self.visible = False
+            self.host.effect_cleanup()
 
     def on_add(self):
         pass
@@ -186,9 +187,10 @@ class StackingPoison(StatusEffect):
     def data_override(self):
         self.name = "Poison"
         self.description = "Deals 1 damage per stack each turn. Goes down by 1 stack each turn."
+        self.can_stack = True
 
     def on_end_turn(self):
-        self.host.damage(self.stacks, ["effect", "poison"])
+        self.host.damage(self.stacks, ["true", "poison"])
         self.add_stacks(-1)
 
 
